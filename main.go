@@ -16,15 +16,15 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 
 	var opts struct {
-		CodeDir    string   `long:"codedir" description:"要扫描的代码目录" required:"true"`
-		GopathDir  string   `long:"gopath" description:"GOPATH目录"`
-		OutputFile string   `long:"outputfile" description:"解析结果保存到该文件中"`
-		IgnoreDirs []string `long:"ignoredir" description:"需要排除的目录,不需要扫描和解析"`
+		CodeDir    string   `long:"codedir" description:"Code directory to scan" required:"true"`
+		GopathDir  string   `long:"gopath" description:"GOPATH directory"`
+		OutputFile string   `long:"outputfile" description:"The result of the analysis is saved in this file"`
+		IgnoreDirs []string `long:"ignoredir" description:"Need to be excluded, no need to scan and parse"`
 	}
 
 	if len(os.Args) == 1 {
-		fmt.Println("使用例子\n" +
-			os.Args[0] + " --codedir /appdev/gopath/src/github.com/contiv/netplugin --gopath /appdev/gopath --outputfile  /tmp/result")
+		fmt.Println("Use examples\n" +
+			os.Args[0] + " --codedir /appdev/gopath/src/github.com/contiv/netplugin --gopath /appdev/gopath --outputfile  result.md")
 		os.Exit(1)
 	}
 
@@ -35,20 +35,20 @@ func main() {
 	}
 
 	if opts.CodeDir == "" {
-		panic("代码目录不能为空")
+		panic("Code directory cannot be empty")
 		os.Exit(1)
 	}
 
 	if opts.GopathDir == "" {
 		opts.GopathDir = os.Getenv("GOPATH")
 		if opts.GopathDir == "" {
-			panic("GOPATH目录不能为空")
+			panic("GOPATH directory cannot be empty")
 			os.Exit(1)
 		}
 	}
 
 	if opts.OutputFile == "" {
-		fmt.Println("输出文件未设置使用puml.txt做为输出文件")
+		fmt.Println("Output file is set to use puml.txt as output file")
 		opts.OutputFile = "puml.txt"
 	}
 	opts.OutputFile, _ = filepath.Abs(opts.OutputFile)
@@ -57,18 +57,18 @@ func main() {
 	createErr := os.MkdirAll(currentPath, 0777)
 	if err != nil {
 		fmt.Printf("%s", createErr)
-		panic("GOPATH目录不能为空")
+		panic("GOPATH directory cannot be empty")
 		os.Exit(1)
 	}
 
 	if !strings.HasPrefix(opts.CodeDir, opts.GopathDir) {
-		panic(fmt.Sprintf("代码目录%s,必须是GOPATH目录%s的子目录", opts.CodeDir, opts.GopathDir))
+		panic(fmt.Sprintf("Code directory %s, must be subdirectory of GOPATH directory %s ", opts.CodeDir, opts.GopathDir))
 		os.Exit(1)
 	}
 
 	for _, dir := range opts.IgnoreDirs {
 		if !strings.HasPrefix(dir, opts.CodeDir) {
-			panic(fmt.Sprintf("需要排除的目录%s,必须是代码目录%s的子目录", dir, opts.CodeDir))
+			panic(fmt.Sprintf("Need to be excluded %s, must be subdirectory of GOPATH directory %s ", dir, opts.CodeDir))
 			os.Exit(1)
 		}
 	}
