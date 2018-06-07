@@ -122,9 +122,13 @@ func PathExists(path string) (bool) {
 }
 
 func packagePathToUML(packagePath string) (string) {
+	// If using linux paths:
 	packagePath = strings.Replace(packagePath, "/", "\\\\", -1)
+	// If using windows paths:
+	packagePath = strings.Replace(packagePath, "\\", "\\\\", -1)
 	packagePath = strings.Replace(packagePath, "-", "_", -1)
-	return packagePath
+	// Cut preceding and trailing namespace separators
+	return strings.Trim(packagePath, "\\")
 }
 
 type baseInfo struct {
@@ -1091,7 +1095,7 @@ func (this *analysisTool) findPackagePathByAlias(alias string, structName string
 		}
 
 		currentFileImportsjson, _ := json.Marshal(this.currentFileImports)
-		log.Warnf("Cannot find the full path to the package，Package name %s，type name=%s, in %s file, matchedImportMetas=%d, currentFileImports=%s", alias, structName, this.currentFile, len(matchedImportMetas), currentFileImportsjson)
+		log.Warnf("Cannot find the full path to the package named %s, type name=%s in file %s, matchedImportMetas=%d, currentFileImports=%s", alias, structName, this.currentFile, len(matchedImportMetas), currentFileImportsjson)
 
 		return alias
 
@@ -1127,7 +1131,7 @@ func (this *analysisTool) findPackagePathByAlias(alias string, structName string
 				}
 
 				if this.existTypeAliasInPackage(structName, matchedImportMeta.Path) {
-					// 忽略别名类型
+					// Ignore alias type
 					return ""
 				}
 
@@ -1136,7 +1140,7 @@ func (this *analysisTool) findPackagePathByAlias(alias string, structName string
 		}
 
 		currentFileImportsjson, _ := json.Marshal(this.currentFileImports)
-		log.Warnf("Cannot find the full path to the package，Package name %s，type name=%s, in file %s , matchedImportMetas=%d, currentFileImports=%s", alias, structName, this.currentFile, len(matchedImportMetas), currentFileImportsjson)
+		log.Warnf("Cannot find the full path to the package named %s, type name=%s in file %s , matchedImportMetas=%d, currentFileImports=%s", alias, structName, this.currentFile, len(matchedImportMetas), currentFileImportsjson)
 
 		return alias
 
