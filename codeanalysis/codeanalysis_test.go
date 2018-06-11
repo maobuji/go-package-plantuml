@@ -4,7 +4,7 @@ import (
 	"testing"
 	"github.com/stvp/assert"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"os"
 )
 

@@ -8,7 +8,7 @@ import (
 	"go/token"
 	"reflect"
 	"go/ast"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"fmt"
 	"encoding/json"
