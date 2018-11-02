@@ -176,7 +176,7 @@ func (this *structMeta) UniqueNameUML() string {
 }
 
 func (this *structMeta) implInterfaceUML(interfaceMeta1 *interfaceMeta) string {
-	return fmt.Sprintf("%s <|- %s\n", interfaceMeta1.UniqueNameUML(), this.UniqueNameUML())
+	return fmt.Sprintf("%s <|------ %s\n", interfaceMeta1.UniqueNameUML(), this.UniqueNameUML())
 }
 
 type importMeta struct {
@@ -509,7 +509,7 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 			d := DependencyRelation{
 				source: sourceStruct1,
 				target:targetStruct1,
-				uml : sourceStruct1.UniqueNameUML() + " -|> " + targetStruct1.UniqueNameUML(),
+				uml : sourceStruct1.UniqueNameUML() + " ------|> " + targetStruct1.UniqueNameUML(),
 			}
 
 			this.dependencyRelations = append(this.dependencyRelations, &d)

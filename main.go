@@ -16,10 +16,10 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 
 	var opts struct {
-		CodeDir string `long:"codedir" description:"要扫描的代码目录"`
-		GopathDir string `long:"gopath" description:"GOPATH目录"`
-		OutputFile string `long:"outputfile" description:"解析结果保存到该文件中"`
-		IgnoreDirs []string `long:"ignoredirs" description:"需要排除的目录,不需要扫描和解析"`
+		CodeDir string `short:"c" description:"要扫描的代码目录"`
+		GopathDir string `short:"g" description:"GOPATH目录"`
+		OutputFile string `short:"o" description:"解析结果保存到该文件中"`
+		IgnoreDirs []string `short:"i" description:"需要排除的目录,不需要扫描和解析"`
 		//Svg bool `long:"svg" description:"输出 svg格式"`
 	}
 
@@ -43,6 +43,11 @@ func main() {
 
 	if opts.CodeDir == "" {
 		opts.CodeDir = curPath
+	} else {
+		if !filepath.IsAbs(opts.CodeDir) {
+			opts.CodeDir = curPath + "/" + opts.CodeDir
+		}
+
 	}
 
 	if opts.GopathDir == "" {
