@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"path"
 	"encoding/json"
+	"runtime"
 )
 
 type Config struct {
@@ -157,6 +158,13 @@ type structMeta struct {
 	UML         string
 }
 
+type funcMeta struct {
+	baseInfo
+	Name        string
+	// UML图节点
+	UML         string
+}
+
 type typeAliasMeta struct {
 	baseInfo
 	Name           string
@@ -198,6 +206,7 @@ type analysisTool struct {
 	interfaceMetas              []*interfaceMeta
 	// 所有的struct
 	structMetas                 []*structMeta
+	funcMetas                 []*funcMeta
 	// 所有的别名定义
 	typeAliasMetas              []*typeAliasMeta
 	// package path与package name的映射关系,例如git.oschina.net/jscode/list-interface 对应的pakcage name为 main
@@ -225,6 +234,10 @@ func (this *analysisTool)analysis(config Config) {
 	}
 
 	dir_walk_once := func(path string, info os.FileInfo, err error) error {
+
+		if runtime.GOOS == "windows" {
+			path = strings.Replace(path, "\\", "/", -1)
+		}
 		// 过滤掉测试代码
 		if strings.HasSuffix(path, ".go") && ! strings.HasSuffix(path, "test.go") {
 			if config.IgnoreDirs != nil && HasPrefixInSomeElement(path, config.IgnoreDirs) {
@@ -241,6 +254,10 @@ func (this *analysisTool)analysis(config Config) {
 	filepath.Walk(config.CodeDir, dir_walk_once)
 
 	dir_walk_twice := func(path string, info os.FileInfo, err error) error {
+		if runtime.GOOS == "windows" {
+			path = strings.Replace(path, "\\", "/", -1)
+		}
+
 		// 过滤掉测试代码
 		if strings.HasSuffix(path, ".go") && ! strings.HasSuffix(path, "test.go") {
 			if config.IgnoreDirs != nil && HasPrefixInSomeElement(path, config.IgnoreDirs) {
@@ -312,6 +329,7 @@ func (this *analysisTool) visitTypeInFile(path string) {
 				if ok {
 					this.visitTypeSpec(typeSpec)
 				}
+
 			}
 		}
 
@@ -340,7 +358,7 @@ func (this *analysisTool) visitTypeSpec(typeSpec *ast.TypeSpec) {
 			PackagePath : this.currentPackagePath,
 		},
 		Name : typeSpec.Name.Name,
-		targetTypeName: "",
+		targetTypeName: this.typeToString(typeSpec.Type, false),
 	})
 
 }
@@ -614,6 +632,8 @@ func (this *analysisTool) structBodyToString(structType *ast.StructType) string 
 		result += "  " + this.fieldToString(field) + "\n"
 	}
 
+	result += "  \n%%method%%\n"
+
 	result += "}"
 
 	return result
@@ -729,6 +749,19 @@ func (this *analysisTool) visitFunc(funcDecl *ast.FuncDecl) {
 			methodSign := this.createMethodSign(funcDecl.Name.Name, funcDecl.Type)
 			structMeta.MethodSigns = append(structMeta.MethodSigns, methodSign)
 		}
+	} else {
+		// 其他类型别名
+		classUML := "class " + funcDecl.Name.Name + " << (F,#FF7700) >> { \n  " + this.createMethodSign(funcDecl.Name.Name, funcDecl.Type) + "\n}"
+		strutMeta1 := &funcMeta{
+			baseInfo : baseInfo{
+				FilePath:this.currentFile,
+				PackagePath:this.currentPackagePath,
+			},
+			Name : funcDecl.Name.Name,
+			UML: fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML),
+		}
+
+		this.funcMetas = append(this.funcMetas, strutMeta1)
 	}
 
 }
@@ -1195,12 +1228,25 @@ func (this *analysisTool) UML() string {
 	uml := ""
 
 	for _, structMeta1 := range this.structMetas {
-		uml += structMeta1.UML
+		method := "  " + strings.Join(structMeta1.MethodSigns, "\n  ")
+		uml += strings.Replace(structMeta1.UML, "%%method%%", method, 1)
 		uml += "\n"
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
 		uml += interfaceMeta1.UML
+		uml += "\n"
+	}
+
+	for _, funcMeta1 := range this.funcMetas {
+		uml += funcMeta1.UML
+		uml += "\n"
+	}
+
+	for _, typeAliasMeta1 := range this.typeAliasMetas {
+		classUML := "class " + typeAliasMeta1.Name + " << (T,#FF7777) " + typeAliasMeta1.targetTypeName + " >>"
+
+		uml += fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML)
 		uml += "\n"
 	}
 

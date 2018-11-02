@@ -1,0 +1,362 @@
+@startuml
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class Config {
+  CodeDir string
+  GopathDir string
+  VendorDir string
+  IgnoreDirs []string
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class baseInfo {
+  FilePath string
+  PackagePath string
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class interfaceMeta {
+  baseInfo
+  Name string
+  MethodSigns []string
+  UML string
+  
+  UniqueNameUML()string
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class structMeta {
+  baseInfo
+  Name string
+  MethodSigns []string
+  UML string
+  
+  UniqueNameUML()string
+  implInterfaceUML(*github.com/wwwido/go-package-plantuml/codeanalysis.interfaceMeta)string
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class funcMeta {
+  baseInfo
+  Name string
+  UML string
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class typeAliasMeta {
+  baseInfo
+  Name string
+  targetTypeName string
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class importMeta {
+  Alias string
+  Path string
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class DependencyRelation {
+  source *structMeta
+  target *structMeta
+  uml string
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class analysisTool {
+  config Config
+  currentFile string
+  currentPackagePath string
+  currentFileImports []*importMeta
+  interfaceMetas []*interfaceMeta
+  structMetas []*structMeta
+  funcMetas []*funcMeta
+  typeAliasMetas []*typeAliasMeta
+  packagePathPackageNameCache map[string]string
+  dependencyRelations []*DependencyRelation
+  
+  analysis(github.com/wwwido/go-package-plantuml/codeanalysis.Config)
+  initFile(string)
+  mapPackagePath_PackageName(string,string)
+  visitTypeInFile(string)
+  visitTypeSpec(*go/ast.TypeSpec)
+  filepathToPackagePath(string)string
+  visitFuncInFile(string)
+  visitStructType(string,*go/ast.StructType)
+  visitStructFields(string,*go/ast.StructType)
+  visitStructField(*github.com/wwwido/go-package-plantuml/codeanalysis.structMeta,*go/ast.Field)
+  isGoBaseType(string)bool
+  findStructByAliasAndStructName(string,string)*github.com/wwwido/go-package-plantuml/codeanalysis.structMeta
+  analysisTypeForDependencyRelation(go/ast.Expr)(*github.com/wwwido/go-package-plantuml/codeanalysis.structMeta,bool)
+  structToUML(string,*go/ast.StructType)string
+  packagePathToUML(string)string
+  structBodyToString(*go/ast.StructType)string
+  visitInterfaceType(string,*go/ast.InterfaceType)
+  interfaceToUML(string,*go/ast.InterfaceType)string
+  funcParamsResultsToString(*go/ast.FuncType)string
+  findStruct(string,string)*github.com/wwwido/go-package-plantuml/codeanalysis.structMeta
+  findTypeAlias(string,string)*github.com/wwwido/go-package-plantuml/codeanalysis.typeAliasMeta
+  findInterfaceMeta(string,string)*github.com/wwwido/go-package-plantuml/codeanalysis.interfaceMeta
+  visitFunc(*go/ast.FuncDecl)
+  visitInterfaceFunctions(string,*go/ast.InterfaceType)
+  findStructTypeOfFunc(*go/ast.FuncDecl)(string,string)
+  debugFunc(*go/ast.FuncDecl)
+  IdentsToString([]*go/ast.Ident)string
+  createMethodSign(string,*go/ast.FuncType)string
+  fieldToStringInMethodSign(*go/ast.Field)string
+  fieldToString(*go/ast.Field)string
+  typeToString(go/ast.Expr,bool)string
+  selectorExprToString(go/ast.Expr)string
+  addPackagePathWhenStruct(string)string
+  findAliasByPackagePath(string)string
+  existStructOrInterfaceInPackage(string,string)bool
+  existTypeAliasInPackage(string,string)bool
+  findPackagePathByAlias(string,string)string
+  interfaceBodyToString(*go/ast.InterfaceType)string
+  content(go/ast.Expr)string
+  findInterfaceImpls(*github.com/wwwido/go-package-plantuml/codeanalysis.interfaceMeta)[]*github.com/wwwido/go-package-plantuml/codeanalysis.structMeta
+  UML()string
+  OutputToFile(string)
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class JobExecuteResult {
+  Cmd string
+  Output []byte
+  Err error
+  StartTime time.Time
+  EndTime time.Time
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\a {
+ class SA {
+  
+  Add()
+  Add2(int)int
+  Add3(int,int,int)(int,int)
+  Add4(int)int
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\b {
+ class B {
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\b {
+ class SB {
+  
+  Add(github.com/wwwido/go-package-plantuml/testdata/b/sub.SubSA,sync.Locker,github.com/wwwido/go-package-plantuml/testdata/b.B,github.com/wwwido/go-package-plantuml/testdata/b/suba.SubSa1)
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\b\\sub {
+ class SubSA {
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\b\\suba {
+ class SubSa1 {
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml {
+ class SA {
+  a int
+  b sync.Mutex
+  c sub2.Sub2A
+  m map[string]sub2.Sub2A
+  
+  Add()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub {
+ class SA {
+  a int
+  b sync.Mutex
+  
+  Add()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub2 {
+ class Sub2A {
+  a AliasA
+  
+  
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ interface AnalysisResult  {
+  OutputToFile(logfile string)
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\a {
+ interface IA  {
+  Add()
+  Add2(i int)int
+  Add3(i int,j,k int)(int,int)
+  Add4(i int)int
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\b {
+ interface IA  {
+  Add(a sub2.SubSA,locker sync.Locker,b B,subsa1 SubSa1)
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml {
+ interface IA  {
+  Add()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub {
+ interface IA  {
+  Add()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub2 {
+ interface Sub2I  {
+  Add(d sub.SA)
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class AnalysisCode << (F,#FF7700) >> { 
+  AnalysisCode(github.com/wwwido/go-package-plantuml/codeanalysis.Config)github.com/wwwido/go-package-plantuml/codeanalysis.AnalysisResult
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class HasPrefixInSomeElement << (F,#FF7700) >> { 
+  HasPrefixInSomeElement(string,[]string)bool
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class sliceContains << (F,#FF7700) >> { 
+  sliceContains([]string,string)bool
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class sliceContainsSlice << (F,#FF7700) >> { 
+  sliceContainsSlice([]string,[]string)bool
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class mapContains << (F,#FF7700) >> { 
+  mapContains(map[string]string,string)bool
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class findGoPackageNameInDirPath << (F,#FF7700) >> { 
+  findGoPackageNameInDirPath(string)string
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class ParsePackageNameFromGoFile << (F,#FF7700) >> { 
+  ParsePackageNameFromGoFile(string)string
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class PathExists << (F,#FF7700) >> { 
+  PathExists(string)bool
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class packagePathToUML << (F,#FF7700) >> { 
+  packagePathToUML(string)string
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\codeanalysis {
+ class Exec << (F,#FF7700) >> { 
+  Exec(string)*github.com/wwwido/go-package-plantuml/codeanalysis.JobExecuteResult
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\demo\\cellnet {
+ class main << (F,#FF7700) >> { 
+  main()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\demo\\contiv {
+ class main << (F,#FF7700) >> { 
+  main()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\demo\\simple {
+ class main << (F,#FF7700) >> { 
+  main()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml {
+ class main << (F,#FF7700) >> { 
+  main()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\a\\main {
+ class m1 << (F,#FF7700) >> { 
+  m1(github.com/wwwido/go-package-plantuml/testdata/a.IA)
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\a\\main {
+ class main << (F,#FF7700) >> { 
+  main()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\b\\main {
+ class m1 << (F,#FF7700) >> { 
+  m1(github.com/wwwido/go-package-plantuml/testdata/b.IA)
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\b\\main {
+ class main << (F,#FF7700) >> { 
+  main()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml {
+ class NewSA << (F,#FF7700) >> { 
+  NewSA()*github.com/wwwido/go-package-plantuml/testdata/uml.SA
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\main {
+ class main << (F,#FF7700) >> { 
+  main()
+} 
+}
+namespace github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub2 {
+ class AliasA << (T,#FF7777) string >> 
+}
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.interfaceMeta -|> github.com\\wwwido\\go_package_plantuml\\codeanalysis.baseInfo
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.structMeta -|> github.com\\wwwido\\go_package_plantuml\\codeanalysis.baseInfo
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.funcMeta -|> github.com\\wwwido\\go_package_plantuml\\codeanalysis.baseInfo
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.typeAliasMeta -|> github.com\\wwwido\\go_package_plantuml\\codeanalysis.baseInfo
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.DependencyRelation ---> github.com\\wwwido\\go_package_plantuml\\codeanalysis.structMeta : source
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.DependencyRelation ---> github.com\\wwwido\\go_package_plantuml\\codeanalysis.structMeta : target
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.analysisTool ---> github.com\\wwwido\\go_package_plantuml\\codeanalysis.Config : config
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.analysisTool ---> "*" github.com\\wwwido\\go_package_plantuml\\codeanalysis.importMeta : currentFileImports
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.analysisTool ---> "*" github.com\\wwwido\\go_package_plantuml\\codeanalysis.interfaceMeta : interfaceMetas
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.analysisTool ---> "*" github.com\\wwwido\\go_package_plantuml\\codeanalysis.structMeta : structMetas
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.analysisTool ---> "*" github.com\\wwwido\\go_package_plantuml\\codeanalysis.funcMeta : funcMetas
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.analysisTool ---> "*" github.com\\wwwido\\go_package_plantuml\\codeanalysis.typeAliasMeta : typeAliasMetas
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.analysisTool ---> "*" github.com\\wwwido\\go_package_plantuml\\codeanalysis.DependencyRelation : dependencyRelations
+github.com\\wwwido\\go_package_plantuml\\testdata\\uml.SA ---> github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub2.Sub2A : c
+github.com\\wwwido\\go_package_plantuml\\testdata\\uml.SA ---> "*" github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub2.Sub2A : m
+github.com\\wwwido\\go_package_plantuml\\codeanalysis.AnalysisResult <|- github.com\\wwwido\\go_package_plantuml\\codeanalysis.analysisTool
+github.com\\wwwido\\go_package_plantuml\\testdata\\a.IA <|- github.com\\wwwido\\go_package_plantuml\\testdata\\a.SA
+github.com\\wwwido\\go_package_plantuml\\testdata\\b.IA <|- github.com\\wwwido\\go_package_plantuml\\testdata\\b.SB
+github.com\\wwwido\\go_package_plantuml\\testdata\\uml.IA <|- github.com\\wwwido\\go_package_plantuml\\testdata\\a.SA
+github.com\\wwwido\\go_package_plantuml\\testdata\\uml.IA <|- github.com\\wwwido\\go_package_plantuml\\testdata\\uml.SA
+github.com\\wwwido\\go_package_plantuml\\testdata\\uml.IA <|- github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub.SA
+github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub.IA <|- github.com\\wwwido\\go_package_plantuml\\testdata\\a.SA
+github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub.IA <|- github.com\\wwwido\\go_package_plantuml\\testdata\\uml.SA
+github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub.IA <|- github.com\\wwwido\\go_package_plantuml\\testdata\\uml\\sub.SA
+@enduml

@@ -1,10 +1,12 @@
 package main
 
 import (
-	"git.oschina.net/jscode/go-package-plantuml/codeanalysis"
+	"github.com/wwwido/go-package-plantuml/codeanalysis"
 	log "github.com/Sirupsen/logrus"
+	"os"
+	"path/filepath"
+	"strings"
 	"fmt"
-	"io/ioutil"
 )
 
 func main() {
@@ -12,26 +14,34 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 
 	//config := codeanalysis.Config{
-	//	CodeDir: "/appdev/go-demo/src/git.oschina.net/jscode/go-package-plantuml/testdata/a",
+	//	CodeDir: "/appdev/go-demo/src/github.com/wwwido/go-package-plantuml/testdata/a",
 	//	GopathDir : "/appdev/go-demo",
 	//}
 	//
 	//result := codeanalysis.AnalysisCode(config)
 	//
 	//result.OutputToFile("/tmp/uml.txt")
-
+	GOPATH := os.Getenv("GOPATH")
+	GOPATH = strings.Replace(GOPATH, "\\", "/", -1)
+	file := "."
+	basePath,_ := filepath.Abs(filepath.Dir(file))
+	basePath = strings.Replace(basePath, "\\", "/", -1)
 	config := codeanalysis.Config{
-		CodeDir: "/appdev/go-demo/src/git.oschina.net/jscode/go-package-plantuml/testdata/uml",
-		GopathDir : "/appdev/go-demo",
+		CodeDir: basePath + "/testdata/uml",
+		GopathDir : GOPATH,
 	}
 
 	result := codeanalysis.AnalysisCode(config)
 
-	result.OutputToFile("/tmp/uml.txt")
+	result.OutputToFile("./uml.txt")
 
-	bytes, _ := ioutil.ReadFile("/tmp/uml.txt")
+	rst := codeanalysis.Exec("java -jar plantuml.jar ./uml.txt -tsvg")
+	fmt.Print(string(rst.Output))
+	fmt.Print(rst.Err)
 
-	fmt.Println(string(bytes))
+	//bytes, _ := ioutil.ReadFile("./uml.txt")
+
+	//fmt.Println(string(bytes))
 
 	// java -jar /app/plantuml.jar  /tmp/uml.txt -tsvg && open2 /tmp/uml.svg
 
