@@ -27,7 +27,7 @@ func main() {
 	basePath,_ := filepath.Abs(filepath.Dir(file))
 	basePath = strings.Replace(basePath, "\\", "/", -1)
 	config := codeanalysis.Config{
-		CodeDir: basePath + "/testdata/uml",
+		CodeDir: GOPATH + "/src/github.com/davyxu/cellnet",
 		GopathDir : GOPATH,
 	}
 
