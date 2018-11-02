@@ -21,6 +21,7 @@ type Config struct {
 	GopathDir  string
 	VendorDir  string
 	IgnoreDirs []string
+	IgnoreImplements []string
 }
 
 type AnalysisResult interface {
@@ -1256,6 +1257,10 @@ func (this *analysisTool) UML() string {
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
+		if InSomeElement(interfaceMeta1.Name, this.config.IgnoreImplements) {
+			continue
+		}
+
 		structMetas := this.findInterfaceImpls(interfaceMeta1)
 		for _, structMeta := range structMetas {
 			uml += structMeta.implInterfaceUML(interfaceMeta1)
@@ -1263,6 +1268,17 @@ func (this *analysisTool) UML() string {
 	}
 
 	return "@startuml\n" + uml + "@enduml"
+}
+
+func InSomeElement(value string, src []string) bool {
+	result := false
+	for _, srcValue := range src {
+		if value == srcValue {
+			result = true
+			break
+		}
+	}
+	return result
 }
 
 func (this*analysisTool) OutputToFile(logfile string) {

@@ -20,6 +20,7 @@ func main() {
 		GopathDir string `short:"g" description:"GOPATH目录"`
 		OutputFile string `short:"o" description:"解析结果保存到该文件中"`
 		IgnoreDirs []string `short:"i" description:"需要排除的目录,不需要扫描和解析"`
+		IgnoreImplements []string `long:"ii" description:"需要排除的实现"`
 		//Svg bool `long:"svg" description:"输出 svg格式"`
 	}
 
@@ -76,6 +77,7 @@ func main() {
 		GopathDir :opts.GopathDir,
 		VendorDir : path.Join(opts.CodeDir, "vendor"),
 		IgnoreDirs:opts.IgnoreDirs,
+		IgnoreImplements:opts.IgnoreImplements,
 	}
 
 	result := codeanalysis.AnalysisCode(config)
