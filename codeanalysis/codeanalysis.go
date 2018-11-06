@@ -510,7 +510,7 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 			d := DependencyRelation{
 				source: sourceStruct1,
 				target:targetStruct1,
-				uml : sourceStruct1.UniqueNameUML() + " ------|> " + targetStruct1.UniqueNameUML(),
+				uml : sourceStruct1.UniqueNameUML() + " ---|> " + targetStruct1.UniqueNameUML(),
 			}
 
 			this.dependencyRelations = append(this.dependencyRelations, &d)
