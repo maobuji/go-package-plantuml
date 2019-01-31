@@ -2,7 +2,7 @@ package codeanalysis
 
 import (
 	"testing"
-	"github.com/stretchr/testify"
+	"github.com/stvp/assert"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
