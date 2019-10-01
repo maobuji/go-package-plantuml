@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/maobuji/go-package-plantuml/codeanalysis"
-	log "github.com/sirupsen/logrus"
 	"fmt"
+	"github.com/ahilbig/go-package-plantuml/codeanalysis"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 )
 
@@ -21,8 +21,8 @@ func main() {
 	//result.OutputToFile("/tmp/uml.txt")
 
 	config := codeanalysis.Config{
-		CodeDir: "/appdev/go-demo/src/github.com/maobuji/go-package-plantuml/testdata/uml",
-		GopathDir : "/appdev/go-demo",
+		CodeDir:   "/appdev/go-demo/src/github.com/maobuji/go-package-plantuml/testdata/uml",
+		GopathDir: "/appdev/go-demo",
 	}
 
 	result := codeanalysis.AnalysisCode(config)

@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"github.com/ahilbig/go-package-plantuml/codeanalysis"
 	"github.com/jessevdk/go-flags"
-	"github.com/maobuji/go-package-plantuml/codeanalysis"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"path"
 	"path/filepath"
