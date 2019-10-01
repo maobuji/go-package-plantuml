@@ -26,7 +26,7 @@ yum install wget
 
 ### Download and compile the project
 ````
-go get github.com/maobuji/go-package-plantuml
+go get github.com/ahilbig/go-package-plantuml
 ````
 
 ### Compiling and downloading dependencies
