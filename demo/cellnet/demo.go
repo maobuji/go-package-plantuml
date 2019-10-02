@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/ahilbig/go-package-plantuml/codeanalysis"
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
+	"github.com/wwwido/go-package-plantuml/codeanalysis"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +14,7 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 
 	//config := codeanalysis.Config{
-	//	CodeDir: "/appdev/go-demo/src/github.com/ahilbig/go-package-plantuml/testdata/a",
+	//	CodeDir: "/appdev/go-demo/src/github.com/wwwido/go-package-plantuml/testdata/a",
 	//	GopathDir : "/appdev/go-demo",
 	//}
 	//
@@ -24,11 +24,11 @@ func main() {
 	GOPATH := os.Getenv("GOPATH")
 	GOPATH = strings.Replace(GOPATH, "\\", "/", -1)
 	file := "."
-	basePath, _ := filepath.Abs(filepath.Dir(file))
+	basePath,_ := filepath.Abs(filepath.Dir(file))
 	basePath = strings.Replace(basePath, "\\", "/", -1)
 	config := codeanalysis.Config{
-		CodeDir:   basePath + "/testdata/uml",
-		GopathDir: GOPATH,
+		CodeDir: GOPATH + "/src/github.com/davyxu/cellnet",
+		GopathDir : GOPATH,
 	}
 
 	result := codeanalysis.AnalysisCode(config)

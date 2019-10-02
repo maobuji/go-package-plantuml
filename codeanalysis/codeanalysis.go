@@ -503,7 +503,7 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 			d := DependencyRelation{
 				source: sourceStruct1,
 				target: targetStruct1,
-				uml:    sourceStruct1.UniqueNameUML() + " ..|> " + targetStruct1.UniqueNameUML(),
+				uml:    sourceStruct1.UniqueNameUML() + " ---|> " + targetStruct1.UniqueNameUML(),
 			}
 
 			this.dependencyRelations = append(this.dependencyRelations, &d)
@@ -1221,7 +1221,8 @@ func (this *analysisTool) UML() string {
 	uml := ""
 
 	for _, structMeta1 := range this.structMetas {
-		uml += structMeta1.UML
+		method := "  " + strings.Join(structMeta1.MethodSigns, "\n  ")
+		uml += strings.Replace(structMeta1.UML, "%%method%%", method, 1)
 		uml += "\n"
 	}
 
