@@ -1,9 +1,9 @@
 package main
 
 import (
-	uml "github.com/maobuji/go-package-plantuml/testdata/uml"
-	sub "github.com/maobuji/go-package-plantuml/testdata/uml/sub"
-	sub2 "github.com/maobuji/go-package-plantuml/testdata/uml/sub2"
+	uml "github.com/ahilbig/go-package-plantuml/testdata/uml"
+	sub "github.com/ahilbig/go-package-plantuml/testdata/uml/sub"
+	sub2 "github.com/ahilbig/go-package-plantuml/testdata/uml/sub2"
 	"fmt"
 )
 

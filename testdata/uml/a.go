@@ -2,7 +2,7 @@ package a
 
 import (
 	"sync"
-	"github.com/maobuji/go-package-plantuml/testdata/uml/sub2"
+	"github.com/ahilbig/go-package-plantuml/testdata/uml/sub2"
 )
 
 type IA interface  {
@@ -18,3 +18,7 @@ type SA struct {
 }
 
 func (this * SA) Add(){}
+
+func NewSA() *SA {
+	return &SA{}
+}

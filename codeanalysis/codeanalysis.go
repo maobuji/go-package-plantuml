@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"fmt"
 	"encoding/json"
+	"runtime"
 )
 
 type Config struct {
@@ -19,6 +20,7 @@ type Config struct {
 	GopathDir  string
 	VendorDir  string
 	IgnoreDirs []string
+	IgnoreImplements []string
 }
 
 type AnalysisResult interface {
@@ -160,6 +162,13 @@ type structMeta struct {
 	UML         string
 }
 
+type funcMeta struct {
+	baseInfo
+	Name        string
+	// UML图节点
+	UML         string
+}
+
 type typeAliasMeta struct {
 	baseInfo
 	Name           string
@@ -171,7 +180,7 @@ func (this *structMeta) UniqueNameUML() string {
 }
 
 func (this *structMeta) implInterfaceUML(interfaceMeta1 *interfaceMeta) string {
-	return fmt.Sprintf("%s <|- %s\n", interfaceMeta1.UniqueNameUML(), this.UniqueNameUML())
+	return fmt.Sprintf("%s <|------ %s\n", interfaceMeta1.UniqueNameUML(), this.UniqueNameUML())
 }
 
 type importMeta struct {
@@ -201,6 +210,7 @@ type analysisTool struct {
 	interfaceMetas              []*interfaceMeta
 	// all structs
 	structMetas                 []*structMeta
+	funcMetas                 []*funcMeta
 	// all alias definitions
 	typeAliasMetas              []*typeAliasMeta
 	// package path and package name mapping relationship, for example github.com/maobuji/list-interface corresponding package name for main
@@ -343,7 +353,7 @@ func (this *analysisTool) visitTypeSpec(typeSpec *ast.TypeSpec) {
 			PackagePath : this.currentPackagePath,
 		},
 		Name : typeSpec.Name.Name,
-		targetTypeName: "",
+		targetTypeName: this.typeToString(typeSpec.Type, false),
 	})
 
 }
@@ -494,7 +504,7 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 			d := DependencyRelation{
 				source: sourceStruct1,
 				target:targetStruct1,
-				uml : sourceStruct1.UniqueNameUML() + " ..|> " + targetStruct1.UniqueNameUML(),
+				uml : sourceStruct1.UniqueNameUML() + " ---|> " + targetStruct1.UniqueNameUML(),
 			}
 
 			this.dependencyRelations = append(this.dependencyRelations, &d)
@@ -617,6 +627,8 @@ func (this *analysisTool) structBodyToString(structType *ast.StructType) string 
 		result += "  " + this.fieldToString(field) + "\n"
 	}
 
+	result += "  \n%%method%%\n"
+
 	result += "}"
 
 	return result
@@ -732,6 +744,19 @@ func (this *analysisTool) visitFunc(funcDecl *ast.FuncDecl) {
 			methodSign := this.createMethodSign(funcDecl.Name.Name, funcDecl.Type)
 			structMeta.MethodSigns = append(structMeta.MethodSigns, methodSign)
 		}
+	} else {
+		// Other type aliases
+		classUML := "class " + funcDecl.Name.Name + " << (F,#FF7700) >> { \n  " + this.createMethodSign(funcDecl.Name.Name, funcDecl.Type) + "\n}"
+		strutMeta1 := &funcMeta{
+			baseInfo : baseInfo{
+				FilePath:this.currentFile,
+				PackagePath:this.currentPackagePath,
+			},
+			Name : funcDecl.Name.Name,
+			UML: fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML),
+		}
+
+		this.funcMetas = append(this.funcMetas, strutMeta1)
 	}
 
 }
@@ -1198,12 +1223,25 @@ func (this *analysisTool) UML() string {
 	uml := ""
 
 	for _, structMeta1 := range this.structMetas {
-		uml += structMeta1.UML
+		method := "  " + strings.Join(structMeta1.MethodSigns, "\n  ")
+		uml += strings.Replace(structMeta1.UML, "%%method%%", method, 1)
 		uml += "\n"
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
 		uml += interfaceMeta1.UML
+		uml += "\n"
+	}
+
+	for _, funcMeta1 := range this.funcMetas {
+		uml += funcMeta1.UML
+		uml += "\n"
+	}
+
+	for _, typeAliasMeta1 := range this.typeAliasMetas {
+		classUML := "class " + typeAliasMeta1.Name + " << (T,#FF7777) " + typeAliasMeta1.targetTypeName + " >>"
+
+		uml += fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML)
 		uml += "\n"
 	}
 
@@ -1213,6 +1251,10 @@ func (this *analysisTool) UML() string {
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
+		if InSomeElement(interfaceMeta1.Name, this.config.IgnoreImplements) {
+			continue
+		}
+
 		structMetas := this.findInterfaceImpls(interfaceMeta1)
 		for _, structMeta := range structMetas {
 			uml += structMeta.implInterfaceUML(interfaceMeta1)
@@ -1220,6 +1262,17 @@ func (this *analysisTool) UML() string {
 	}
 
 	return "@startuml\n" + uml + "@enduml"
+}
+
+func InSomeElement(value string, src []string) bool {
+	result := false
+	for _, srcValue := range src {
+		if value == srcValue {
+			result = true
+			break
+		}
+	}
+	return result
 }
 
 func (this*analysisTool) OutputToFile(logfile string) {

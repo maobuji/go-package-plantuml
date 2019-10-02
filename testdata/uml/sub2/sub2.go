@@ -1,6 +1,6 @@
 package sub2
 
-import sub "github.com/maobuji/go-package-plantuml/testdata/uml/sub"
+import sub "github.com/ahilbig/go-package-plantuml/testdata/uml/sub"
 
 type Sub2I interface {
 	Add(d sub.SA)
