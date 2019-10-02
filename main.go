@@ -17,22 +17,28 @@ func main() {
 
 	var opts struct {
 		CodeDir          string   `short:"c" long:"codedir" description:"Code directory to scan" required:"true"`
-		GopathDir        string   `short: "g" long:"gopath" description:"GOPATH directory"`
+		GopathDir        string   `short:"g" long:"gopath" description:"GOPATH directory"`
 		OutputFile       string   `short:"o" long:"outputfile" description:"The result of the analysis is saved in this file"`
 		IgnoreDirs       []string `short:"i" long:"ignoredir" description:"Need to be excluded, no need to scan and parse"`
 		IgnoreImplements []string `long:"ii" description:"Implementation that needs to be excluded"`
+		IgnoreTypeAlias  []string `long:"it" description:"Type to be excluded, will be scanned and parsed but not put into UML"`
+		IncludeTypeAlias []string `short:"t" long:"type" description:"Type to be included - if set all other will be ignored"`
+		IgnoreFilenames  []string `long:"ignorefile" description:"Filename (without .go suffix) to be excluded, no need to scan and parse"`
+		IncludeFilenames []string `short:"f" long:"file" description:"Filename (without .go suffix) to be included - if set all other will be ignored"`
 		//Svg bool `long:"svg" description:"/Output svg format"`
 	}
 
 	if len(os.Args) == 1 {
 		fmt.Println("Use examples\n" +
-			os.Args[0] + " --codedir /appdev/gopath/src/github.com/contiv/netplugin --gopath /appdev/gopath --outputfile  result.md")
+			os.Args[0] + " --codedir /appdev/gopath/src/github.com/contiv/netplugin --type Contract --type Subscription" +
+			"--gopath /appdev/gopath --outputfile  result.md")
 		os.Exit(1)
 	}
 
 	_, err := flags.ParseArgs(&opts, os.Args)
 
 	if err != nil {
+		log.Error(err)
 		os.Exit(1)
 	}
 
@@ -94,7 +100,10 @@ func main() {
 		GopathDir:        opts.GopathDir,
 		VendorDir:        path.Join(opts.CodeDir, "vendor"),
 		IgnoreDirs:       opts.IgnoreDirs,
-		IgnoreImplements: opts.IgnoreImplements,
+		IgnoreTypeAlias:  opts.IgnoreTypeAlias,
+		IncludeTypeAlias: opts.IncludeTypeAlias,
+		IgnoreFilenames:  opts.IgnoreFilenames,
+		IncludeFilenames: opts.IncludeFilenames,
 	}
 
 	result := codeanalysis.AnalysisCode(config)

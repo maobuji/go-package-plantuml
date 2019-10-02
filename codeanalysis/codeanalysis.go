@@ -19,7 +19,11 @@ type Config struct {
 	GopathDir        string
 	VendorDir        string
 	IgnoreDirs       []string
+	IgnoreFilenames  []string
+	IncludeFilenames []string
 	IgnoreImplements []string
+	IncludeTypeAlias []string
+	IgnoreTypeAlias  []string
 }
 
 type AnalysisResult interface {
@@ -46,6 +50,18 @@ func HasPrefixInSomeElement(value string, src []string) bool {
 			break
 		}
 	}
+	return result
+}
+
+func HasSuffixInSomeElement(value, extraSuffix string, src []string) bool {
+	result := false
+	for _, srcValue := range src {
+		if strings.HasSuffix(value, srcValue+extraSuffix) || strings.HasSuffix(value, srcValue) {
+			result = true
+			break
+		}
+	}
+
 	return result
 }
 
@@ -239,7 +255,7 @@ func (this *analysisTool) analysis(config Config) {
 	dir_walk_once := func(path string, info os.FileInfo, err error) error {
 		// Filter out test code
 		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "test.go") {
-			if config.IgnoreDirs != nil && HasPrefixInSomeElement(path, config.IgnoreDirs) {
+			if this.ignorePath(path) {
 				// ignore
 			} else {
 				log.Info("analyze " + path)
@@ -255,7 +271,7 @@ func (this *analysisTool) analysis(config Config) {
 	dir_walk_twice := func(path string, info os.FileInfo, err error) error {
 		// Filter out test code
 		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "test.go") {
-			if config.IgnoreDirs != nil && HasPrefixInSomeElement(path, config.IgnoreDirs) {
+			if this.ignorePath(path) {
 				// ignore
 			} else {
 				log.Info("resolve " + path)
@@ -268,6 +284,13 @@ func (this *analysisTool) analysis(config Config) {
 
 	filepath.Walk(config.CodeDir, dir_walk_twice)
 
+}
+
+func (this *analysisTool) ignorePath(path string) bool {
+	c := this.config
+	return c.IgnoreDirs != nil && HasPrefixInSomeElement(path, c.IgnoreDirs) ||
+		c.IgnoreFilenames != nil && HasSuffixInSomeElement(path, ".go", c.IgnoreFilenames) ||
+		c.IncludeFilenames != nil && !HasSuffixInSomeElement(path, ".go", c.IncludeFilenames)
 }
 
 func (this *analysisTool) initFile(path string) {
@@ -1221,12 +1244,18 @@ func (this *analysisTool) UML() string {
 	uml := ""
 
 	for _, structMeta1 := range this.structMetas {
+		if this.IsFileIgnored(structMeta1.Name) {
+			continue
+		}
 		method := "  " + strings.Join(structMeta1.MethodSigns, "\n  ")
 		uml += strings.Replace(structMeta1.UML, "%%method%%", method, 1)
 		uml += "\n"
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
+		if this.IsFileIgnored(interfaceMeta1.Name) {
+			continue
+		}
 		uml += interfaceMeta1.UML
 		uml += "\n"
 	}
@@ -1237,6 +1266,9 @@ func (this *analysisTool) UML() string {
 	}
 
 	for _, typeAliasMeta1 := range this.typeAliasMetas {
+		if this.IsFileIgnored(typeAliasMeta1.Name) {
+			continue
+		}
 		classUML := "class " + typeAliasMeta1.Name + " << (T,#FF7777) " + typeAliasMeta1.targetTypeName + " >>"
 
 		uml += fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML)
@@ -1244,12 +1276,16 @@ func (this *analysisTool) UML() string {
 	}
 
 	for _, d := range this.dependencyRelations {
+		if this.IsFileIgnored(d.source.Name) || this.IsFileIgnored(d.target.Name) {
+			continue
+		}
+
 		uml += d.uml
 		uml += "\n"
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
-		if InSomeElement(interfaceMeta1.Name, this.config.IgnoreImplements) {
+		if this.IsFileIgnored(interfaceMeta1.Name) || InSomeElement(interfaceMeta1.Name, this.config.IgnoreImplements) {
 			continue
 		}
 
@@ -1260,6 +1296,11 @@ func (this *analysisTool) UML() string {
 	}
 
 	return "@startuml\n" + uml + "@enduml"
+}
+
+func (this *analysisTool) IsFileIgnored(name string) bool {
+	return this.config.IncludeTypeAlias != nil && !InSomeElement(name, this.config.IncludeTypeAlias) ||
+		InSomeElement(name, this.config.IgnoreTypeAlias)
 }
 
 func InSomeElement(value string, src []string) bool {

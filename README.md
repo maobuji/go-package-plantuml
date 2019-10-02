@@ -53,7 +53,8 @@ Parameter Description<br>
 --gopath GOPATH Environment variable directory<br>
 --outputfile Analysis results are saved to this file<br>
 --ignoredir No need for code analysis directory（Can not set）<br>
-
+--ignorefile, -if No need for  code analysis file
+--file, -f Include file - all other will be ignored
 
 The output text of the previous step, convert to svg file
 ````
