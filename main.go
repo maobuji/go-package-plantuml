@@ -16,10 +16,10 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 
 	var opts struct {
-		CodeDir    string   `short:"c" long:"codedir" description:"Code directory to scan" required:"true"`
-		GopathDir  string   `short: "g" long:"gopath" description:"GOPATH directory"`
-		OutputFile string   `short:"o" long:"outputfile" description:"The result of the analysis is saved in this file"`
-		IgnoreDirs []string `short:"i" long:"ignoredir" description:"Need to be excluded, no need to scan and parse"`
+		CodeDir          string   `short:"c" long:"codedir" description:"Code directory to scan" required:"true"`
+		GopathDir        string   `short: "g" long:"gopath" description:"GOPATH directory"`
+		OutputFile       string   `short:"o" long:"outputfile" description:"The result of the analysis is saved in this file"`
+		IgnoreDirs       []string `short:"i" long:"ignoredir" description:"Need to be excluded, no need to scan and parse"`
 		IgnoreImplements []string `long:"ii" description:"Implementation that needs to be excluded"`
 		//Svg bool `long:"svg" description:"/Output svg format"`
 	}
@@ -36,7 +36,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	curPath,_ := filepath.Abs(filepath.Dir("."))
+	curPath, _ := filepath.Abs(filepath.Dir("."))
 	curPath = strings.Replace(curPath, "\\", "/", -1)
 
 	GOPATH := os.Getenv("GOPATH")
@@ -46,7 +46,7 @@ func main() {
 		opts.CodeDir = curPath
 	} else {
 		if !filepath.IsAbs(opts.CodeDir) {
-			opts.CodeDir = filepath.Path(curPath, opts.CodeDir)
+			opts.CodeDir = filepath.Join(curPath, opts.CodeDir)
 		}
 
 	}
@@ -79,7 +79,7 @@ func main() {
 
 	for i, dir := range opts.IgnoreDirs {
 		if !filepath.IsAbs(dir) {
-			dir = filepath.Path(opts.CodeDir, dir)
+			dir = filepath.Join(opts.CodeDir, dir)
 			opts.IgnoreDirs[i] = dir
 		}
 
@@ -90,11 +90,11 @@ func main() {
 	}
 
 	config := codeanalysis.Config{
-		CodeDir:    opts.CodeDir,
-		GopathDir:  opts.GopathDir,
-		VendorDir:  path.Join(opts.CodeDir, "vendor"),
-		IgnoreDirs: opts.IgnoreDirs,
-		IgnoreImplements:opts.IgnoreImplements,
+		CodeDir:          opts.CodeDir,
+		GopathDir:        opts.GopathDir,
+		VendorDir:        path.Join(opts.CodeDir, "vendor"),
+		IgnoreDirs:       opts.IgnoreDirs,
+		IgnoreImplements: opts.IgnoreImplements,
 	}
 
 	result := codeanalysis.AnalysisCode(config)

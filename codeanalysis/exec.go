@@ -1,25 +1,24 @@
 package codeanalysis
 
 import (
+	"context"
 	"os/exec"
 	"time"
-	"context"
 )
-
 
 // 任务执行结果
 type JobExecuteResult struct {
-	Cmd string
-	Output []byte // 脚本输出
-	Err error // 脚本错误原因
+	Cmd       string
+	Output    []byte    // 脚本输出
+	Err       error     // 脚本错误原因
 	StartTime time.Time // 启动时间
-	EndTime time.Time // 结束时间
+	EndTime   time.Time // 结束时间
 }
 
 func Exec(c string) *JobExecuteResult {
 	var (
-		cmd *exec.Cmd
-		err error
+		cmd    *exec.Cmd
+		err    error
 		output []byte
 		result *JobExecuteResult
 	)

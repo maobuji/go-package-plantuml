@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/wwwido/go-package-plantuml/codeanalysis"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/wwwido/go-package-plantuml/codeanalysis"
 	"os"
 	"path/filepath"
 	"strings"
-	"fmt"
 )
 
 func main() {

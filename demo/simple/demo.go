@@ -1,13 +1,12 @@
 package main
 
 import (
-	"github.com/wwwido/go-package-plantuml/codeanalysis"
-	log "github.com/Sirupsen/logrus"
+	"fmt"
+	"github.com/ahilbig/go-package-plantuml/codeanalysis"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"strings"
-	"fmt"
-	"io/ioutil"
 )
 
 func main() {
@@ -25,11 +24,11 @@ func main() {
 	GOPATH := os.Getenv("GOPATH")
 	GOPATH = strings.Replace(GOPATH, "\\", "/", -1)
 	file := "."
-	basePath,_ := filepath.Abs(filepath.Dir(file))
+	basePath, _ := filepath.Abs(filepath.Dir(file))
 	basePath = strings.Replace(basePath, "\\", "/", -1)
 	config := codeanalysis.Config{
-		CodeDir: basePath + "/testdata/uml",
-		GopathDir : GOPATH,
+		CodeDir:   basePath + "/testdata/uml",
+		GopathDir: GOPATH,
 	}
 
 	result := codeanalysis.AnalysisCode(config)
