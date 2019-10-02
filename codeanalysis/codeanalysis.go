@@ -1,24 +1,25 @@
 package codeanalysis
 
 import (
-	"go/parser"
-	"path/filepath"
-	"os"
-	"strings"
-	"go/token"
-	"reflect"
-	"go/ast"
-	log "github.com/sirupsen/logrus"
-	"io/ioutil"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	log "github.com/sirupsen/logrus"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
 )
 
 type Config struct {
-	CodeDir    string
-	GopathDir  string
-	VendorDir  string
-	IgnoreDirs []string
+	CodeDir          string
+	GopathDir        string
+	VendorDir        string
+	IgnoreDirs       []string
+	IgnoreImplements []string
 }
 
 type AnalysisResult interface {
@@ -27,11 +28,11 @@ type AnalysisResult interface {
 
 func AnalysisCode(config Config) AnalysisResult {
 	tool := &analysisTool{
-		interfaceMetas : []*interfaceMeta{},
-		structMetas : []*structMeta{},
-		typeAliasMetas : []*typeAliasMeta{},
-		packagePathPackageNameCache : map[string]string{},
-		dependencyRelations : []*DependencyRelation{},
+		interfaceMetas:              []*interfaceMeta{},
+		structMetas:                 []*structMeta{},
+		typeAliasMetas:              []*typeAliasMeta{},
+		packagePathPackageNameCache: map[string]string{},
+		dependencyRelations:         []*DependencyRelation{},
 	}
 	tool.analysis(config)
 	return tool
@@ -40,7 +41,7 @@ func AnalysisCode(config Config) AnalysisResult {
 func HasPrefixInSomeElement(value string, src []string) bool {
 	result := false
 	for _, srcValue := range src {
-		if (strings.HasPrefix(value, srcValue)) {
+		if strings.HasPrefix(value, srcValue) {
 			result = true
 			break
 		}
@@ -51,7 +52,7 @@ func HasPrefixInSomeElement(value string, src []string) bool {
 func sliceContains(src []string, value string) bool {
 	isContain := false
 	for _, srcValue := range src {
-		if (srcValue == value) {
+		if srcValue == value {
 			isContain = true
 			break
 		}
@@ -61,7 +62,7 @@ func sliceContains(src []string, value string) bool {
 
 func sliceContainsSlice(s []string, s2 []string) bool {
 	for _, str := range s2 {
-		if ! sliceContains(s, str) {
+		if !sliceContains(s, str) {
 			return false
 		}
 	}
@@ -85,7 +86,7 @@ func findGoPackageNameInDirPath(dirpath string) string {
 	}
 
 	for _, fileInfo := range dir_list {
-		if ! fileInfo.IsDir() && strings.HasSuffix(fileInfo.Name(), ".go") {
+		if !fileInfo.IsDir() && strings.HasSuffix(fileInfo.Name(), ".go") {
 			packageName := ParsePackageNameFromGoFile(filepath.Join(dirpath, fileInfo.Name()))
 			if packageName != "" {
 				return packageName
@@ -110,7 +111,7 @@ func ParsePackageNameFromGoFile(filepath string) string {
 
 }
 
-func PathExists(path string) (bool) {
+func PathExists(path string) bool {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true
@@ -121,7 +122,7 @@ func PathExists(path string) (bool) {
 	return false
 }
 
-func packagePathToUML(packagePath string) (string) {
+func packagePathToUML(packagePath string) string {
 	// If using linux paths:
 	packagePath = strings.Replace(packagePath, "/", "\\\\", -1)
 	// If using windows paths:
@@ -133,18 +134,18 @@ func packagePathToUML(packagePath string) (string) {
 
 type baseInfo struct {
 	// go file path
-	FilePath    string
+	FilePath string
 	// Package path, for example github.com/maobuji/list-interface
 	PackagePath string
 }
 
 type interfaceMeta struct {
 	baseInfo
-	Name        string
+	Name string
 	// interface method signature list,
 	MethodSigns []string
 	// UML gigure node
-	UML         string
+	UML string
 }
 
 func (this *interfaceMeta) UniqueNameUML() string {
@@ -153,11 +154,18 @@ func (this *interfaceMeta) UniqueNameUML() string {
 
 type structMeta struct {
 	baseInfo
-	Name        string
+	Name string
 	// struct method signature list
 	MethodSigns []string
 	// UML figure node
-	UML         string
+	UML string
+}
+
+type funcMeta struct {
+	baseInfo
+	Name string
+	// UML图节点
+	UML string
 }
 
 type typeAliasMeta struct {
@@ -171,14 +179,14 @@ func (this *structMeta) UniqueNameUML() string {
 }
 
 func (this *structMeta) implInterfaceUML(interfaceMeta1 *interfaceMeta) string {
-	return fmt.Sprintf("%s <|- %s\n", interfaceMeta1.UniqueNameUML(), this.UniqueNameUML())
+	return fmt.Sprintf("%s <|------ %s\n", interfaceMeta1.UniqueNameUML(), this.UniqueNameUML())
 }
 
 type importMeta struct {
 	// for example main
 	Alias string
 	// for example github.com/maobuji/list-interface
-	Path  string
+	Path string
 }
 
 type DependencyRelation struct {
@@ -188,37 +196,38 @@ type DependencyRelation struct {
 }
 
 type analysisTool struct {
-	config                      Config
+	config Config
 
 	// Currently parsed go file, for example /appdev/go-demo/src/github.com/maobuji/list-interface/a.go
-	currentFile                 string
+	currentFile string
 	// Currently parsed go file, where the package path, for example github.com/maobuji/list-interface
-	currentPackagePath          string
+	currentPackagePath string
 	// Currently parsed go file, other packages introduced
-	currentFileImports          []*importMeta
+	currentFileImports []*importMeta
 
 	// all interfaces
-	interfaceMetas              []*interfaceMeta
+	interfaceMetas []*interfaceMeta
 	// all structs
-	structMetas                 []*structMeta
+	structMetas []*structMeta
+	funcMetas   []*funcMeta
 	// all alias definitions
-	typeAliasMetas              []*typeAliasMeta
+	typeAliasMetas []*typeAliasMeta
 	// package path and package name mapping relationship, for example github.com/maobuji/list-interface corresponding package name for main
 	packagePathPackageNameCache map[string]string
 	// dependency between structs
-	dependencyRelations         []*DependencyRelation
+	dependencyRelations []*DependencyRelation
 }
 
-func (this *analysisTool)analysis(config Config) {
+func (this *analysisTool) analysis(config Config) {
 
 	this.config = config
 
-	if this.config.CodeDir == "" || ! PathExists(this.config.CodeDir) {
+	if this.config.CodeDir == "" || !PathExists(this.config.CodeDir) {
 		log.Errorf("Can't find code directory %s\n", this.config.CodeDir)
 		return
 	}
 
-	if this.config.GopathDir == "" || ! PathExists(this.config.GopathDir) {
+	if this.config.GopathDir == "" || !PathExists(this.config.GopathDir) {
 		log.Errorf("cannot find GOPATH directory %s\n", this.config.GopathDir)
 		return
 	}
@@ -229,7 +238,7 @@ func (this *analysisTool)analysis(config Config) {
 
 	dir_walk_once := func(path string, info os.FileInfo, err error) error {
 		// Filter out test code
-		if strings.HasSuffix(path, ".go") && ! strings.HasSuffix(path, "test.go") {
+		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "test.go") {
 			if config.IgnoreDirs != nil && HasPrefixInSomeElement(path, config.IgnoreDirs) {
 				// ignore
 			} else {
@@ -245,7 +254,7 @@ func (this *analysisTool)analysis(config Config) {
 
 	dir_walk_twice := func(path string, info os.FileInfo, err error) error {
 		// Filter out test code
-		if strings.HasSuffix(path, ".go") && ! strings.HasSuffix(path, "test.go") {
+		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "test.go") {
 			if config.IgnoreDirs != nil && HasPrefixInSomeElement(path, config.IgnoreDirs) {
 				// ignore
 			} else {
@@ -338,22 +347,22 @@ func (this *analysisTool) visitTypeSpec(typeSpec *ast.TypeSpec) {
 
 	// Other types of alias
 	this.typeAliasMetas = append(this.typeAliasMetas, &typeAliasMeta{
-		baseInfo : baseInfo{
-			FilePath : this.currentFile,
-			PackagePath : this.currentPackagePath,
+		baseInfo: baseInfo{
+			FilePath:    this.currentFile,
+			PackagePath: this.currentPackagePath,
 		},
-		Name : typeSpec.Name.Name,
-		targetTypeName: "",
+		Name:           typeSpec.Name.Name,
+		targetTypeName: this.typeToString(typeSpec.Type, false),
 	})
 
 }
 
-func (this*analysisTool) filepathToPackagePath(path string) string {
+func (this *analysisTool) filepathToPackagePath(path string) string {
 
 	path = filepath.Dir(path)
 
 	if this.config.VendorDir != "" {
-		if (strings.HasPrefix(path, this.config.VendorDir)) {
+		if strings.HasPrefix(path, this.config.VendorDir) {
 			packagePath := strings.TrimPrefix(path, this.config.VendorDir)
 			packagePath = strings.TrimPrefix(packagePath, "/")
 			return packagePath
@@ -410,8 +419,8 @@ func (this *analysisTool) visitFuncInFile(path string) {
 			log.Debugf("current_file=%s packagePath=%s, alias=%s\n", this.currentFile, packagePath, alias)
 
 			this.currentFileImports = append(this.currentFileImports, &importMeta{
-				Alias : alias,
-				Path:packagePath,
+				Alias: alias,
+				Path:  packagePath,
 			})
 		}
 	}
@@ -457,12 +466,12 @@ func (this *analysisTool) visitFuncInFile(path string) {
 func (this *analysisTool) visitStructType(name string, structType *ast.StructType) {
 
 	strutMeta1 := &structMeta{
-		baseInfo : baseInfo{
-			FilePath:this.currentFile,
-			PackagePath:this.currentPackagePath,
+		baseInfo: baseInfo{
+			FilePath:    this.currentFile,
+			PackagePath: this.currentPackagePath,
 		},
-		Name : name,
-		MethodSigns:[]string{},
+		Name:        name,
+		MethodSigns: []string{},
 	}
 
 	this.structMetas = append(this.structMetas, strutMeta1)
@@ -493,8 +502,8 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 
 			d := DependencyRelation{
 				source: sourceStruct1,
-				target:targetStruct1,
-				uml : sourceStruct1.UniqueNameUML() + " ..|> " + targetStruct1.UniqueNameUML(),
+				target: targetStruct1,
+				uml:    sourceStruct1.UniqueNameUML() + " ..|> " + targetStruct1.UniqueNameUML(),
 			}
 
 			this.dependencyRelations = append(this.dependencyRelations, &d)
@@ -505,8 +514,8 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 
 				d := DependencyRelation{
 					source: sourceStruct1,
-					target:targetStruct1,
-					uml : sourceStruct1.UniqueNameUML() + " ---> \"*\" " + targetStruct1.UniqueNameUML() + " : " + fieldNames,
+					target: targetStruct1,
+					uml:    sourceStruct1.UniqueNameUML() + " ---> \"*\" " + targetStruct1.UniqueNameUML() + " : " + fieldNames,
 				}
 
 				this.dependencyRelations = append(this.dependencyRelations, &d)
@@ -514,8 +523,8 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 			} else {
 				d := DependencyRelation{
 					source: sourceStruct1,
-					target:targetStruct1,
-					uml : sourceStruct1.UniqueNameUML() + " ---> " + targetStruct1.UniqueNameUML() + " : " + fieldNames,
+					target: targetStruct1,
+					uml:    sourceStruct1.UniqueNameUML() + " ---> " + targetStruct1.UniqueNameUML() + " : " + fieldNames,
 				}
 
 				this.dependencyRelations = append(this.dependencyRelations, &d)
@@ -540,7 +549,7 @@ func (this *analysisTool) isGoBaseType(type1 string) bool {
 	return false
 }
 
-func (this *analysisTool) findStructByAliasAndStructName(alias string, structName string) (*structMeta) {
+func (this *analysisTool) findStructByAliasAndStructName(alias string, structName string) *structMeta {
 
 	if alias == "" && this.isGoBaseType(structName) {
 		return nil
@@ -617,6 +626,8 @@ func (this *analysisTool) structBodyToString(structType *ast.StructType) string 
 		result += "  " + this.fieldToString(field) + "\n"
 	}
 
+	result += "  \n%%method%%\n"
+
 	result += "}"
 
 	return result
@@ -626,11 +637,11 @@ func (this *analysisTool) structBodyToString(structType *ast.StructType) string 
 func (this *analysisTool) visitInterfaceType(name string, interfaceType *ast.InterfaceType) {
 
 	interfaceInfo1 := &interfaceMeta{
-		baseInfo : baseInfo{
-			FilePath : this.currentFile,
-			PackagePath : this.currentPackagePath,
+		baseInfo: baseInfo{
+			FilePath:    this.currentFile,
+			PackagePath: this.currentPackagePath,
 		},
-		Name:name,
+		Name: name,
 	}
 
 	this.interfaceMetas = append(this.interfaceMetas, interfaceInfo1)
@@ -681,7 +692,7 @@ func (this *analysisTool) funcParamsResultsToString(funcType *ast.FuncType) stri
 
 }
 
-func (this*analysisTool) findStruct(packagePath string, structName string) *structMeta {
+func (this *analysisTool) findStruct(packagePath string, structName string) *structMeta {
 
 	for _, structMeta1 := range this.structMetas {
 		if structMeta1.Name == structName && structMeta1.PackagePath == packagePath {
@@ -692,7 +703,7 @@ func (this*analysisTool) findStruct(packagePath string, structName string) *stru
 	return nil
 }
 
-func (this*analysisTool) findTypeAlias(packagePath string, structName string) *typeAliasMeta {
+func (this *analysisTool) findTypeAlias(packagePath string, structName string) *typeAliasMeta {
 
 	for _, typeAliasMeta1 := range this.typeAliasMetas {
 		if typeAliasMeta1.Name == structName && typeAliasMeta1.PackagePath == packagePath {
@@ -703,7 +714,7 @@ func (this*analysisTool) findTypeAlias(packagePath string, structName string) *t
 	return nil
 }
 
-func (this*analysisTool) findInterfaceMeta(packagePath string, interfaceName string) *interfaceMeta {
+func (this *analysisTool) findInterfaceMeta(packagePath string, interfaceName string) *interfaceMeta {
 
 	for _, interfaceMeta := range this.interfaceMetas {
 		if interfaceMeta.Name == interfaceName && interfaceMeta.PackagePath == packagePath {
@@ -732,6 +743,19 @@ func (this *analysisTool) visitFunc(funcDecl *ast.FuncDecl) {
 			methodSign := this.createMethodSign(funcDecl.Name.Name, funcDecl.Type)
 			structMeta.MethodSigns = append(structMeta.MethodSigns, methodSign)
 		}
+	} else {
+		// Other type aliases
+		classUML := "class " + funcDecl.Name.Name + " << (F,#FF7700) >> { \n  " + this.createMethodSign(funcDecl.Name.Name, funcDecl.Type) + "\n}"
+		strutMeta1 := &funcMeta{
+			baseInfo: baseInfo{
+				FilePath:    this.currentFile,
+				PackagePath: this.currentPackagePath,
+			},
+			Name: funcDecl.Name.Name,
+			UML:  fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML),
+		}
+
+		this.funcMetas = append(this.funcMetas, strutMeta1)
 	}
 
 }
@@ -821,7 +845,6 @@ func (this *analysisTool) IdentsToString(names []*ast.Ident) string {
 	return r
 }
 
-
 // 创建方法签名
 func (this *analysisTool) createMethodSign(methodName string, funcType *ast.FuncType) string {
 
@@ -899,11 +922,11 @@ func (this *analysisTool) fieldToString(f *ast.Field) string {
 
 	r += this.typeToString(f.Type, false)
 
-	return r;
+	return r
 
 }
 
-func (this *analysisTool) typeToString(t ast.Expr, convertTypeToUnqiueType bool) (string) {
+func (this *analysisTool) typeToString(t ast.Expr, convertTypeToUnqiueType bool) string {
 
 	ident, ok := t.(*ast.Ident)
 	if ok {
@@ -973,7 +996,7 @@ func (this *analysisTool) typeToString(t ast.Expr, convertTypeToUnqiueType bool)
 	return ""
 }
 
-func (this *analysisTool) selectorExprToString(t ast.Expr) (string) {
+func (this *analysisTool) selectorExprToString(t ast.Expr) string {
 
 	ident, ok := t.(*ast.Ident)
 	if ok {
@@ -985,7 +1008,7 @@ func (this *analysisTool) selectorExprToString(t ast.Expr) (string) {
 	return ""
 }
 
-func (this *analysisTool)  addPackagePathWhenStruct(fieldType string) string {
+func (this *analysisTool) addPackagePathWhenStruct(fieldType string) string {
 
 	searchPackages := []string{this.currentPackagePath}
 
@@ -996,7 +1019,7 @@ func (this *analysisTool)  addPackagePathWhenStruct(fieldType string) string {
 	}
 
 	for _, meta := range this.structMetas {
-		if sliceContains(searchPackages, meta.PackagePath)  && meta.Name == fieldType {
+		if sliceContains(searchPackages, meta.PackagePath) && meta.Name == fieldType {
 			return meta.PackagePath + "." + fieldType
 		}
 	}
@@ -1032,7 +1055,7 @@ func (this *analysisTool) findAliasByPackagePath(packagePath string) string {
 	return result
 }
 
-func (this*analysisTool) existStructOrInterfaceInPackage(typeName string, packageName string) bool {
+func (this *analysisTool) existStructOrInterfaceInPackage(typeName string, packageName string) bool {
 	structMeta1 := this.findStruct(this.currentPackagePath, typeName)
 	if structMeta1 != nil {
 		return true
@@ -1046,7 +1069,7 @@ func (this*analysisTool) existStructOrInterfaceInPackage(typeName string, packag
 	return false
 }
 
-func (this*analysisTool) existTypeAliasInPackage(typeName string, packageName string) bool {
+func (this *analysisTool) existTypeAliasInPackage(typeName string, packageName string) bool {
 	meta1 := this.findTypeAlias(this.currentPackagePath, typeName)
 	if meta1 != nil {
 		return true
@@ -1175,14 +1198,14 @@ func (this *analysisTool) content(t ast.Expr) string {
 		return ""
 	}
 
-	return string(bytes[t.Pos() - 1:t.End() - 1])
+	return string(bytes[t.Pos()-1 : t.End()-1])
 }
 
 /**
  * 查找interface有哪些实现的Struct
  */
 func (this *analysisTool) findInterfaceImpls(interfaceMeta1 *interfaceMeta) []*structMeta {
-	metas := [] *structMeta{}
+	metas := []*structMeta{}
 
 	for _, structMeta1 := range this.structMetas {
 		if sliceContainsSlice(structMeta1.MethodSigns, interfaceMeta1.MethodSigns) {
@@ -1207,12 +1230,28 @@ func (this *analysisTool) UML() string {
 		uml += "\n"
 	}
 
+	for _, funcMeta1 := range this.funcMetas {
+		uml += funcMeta1.UML
+		uml += "\n"
+	}
+
+	for _, typeAliasMeta1 := range this.typeAliasMetas {
+		classUML := "class " + typeAliasMeta1.Name + " << (T,#FF7777) " + typeAliasMeta1.targetTypeName + " >>"
+
+		uml += fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML)
+		uml += "\n"
+	}
+
 	for _, d := range this.dependencyRelations {
 		uml += d.uml
 		uml += "\n"
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
+		if InSomeElement(interfaceMeta1.Name, this.config.IgnoreImplements) {
+			continue
+		}
+
 		structMetas := this.findInterfaceImpls(interfaceMeta1)
 		for _, structMeta := range structMetas {
 			uml += structMeta.implInterfaceUML(interfaceMeta1)
@@ -1222,11 +1261,21 @@ func (this *analysisTool) UML() string {
 	return "@startuml\n" + uml + "@enduml"
 }
 
-func (this*analysisTool) OutputToFile(logfile string) {
+func InSomeElement(value string, src []string) bool {
+	result := false
+	for _, srcValue := range src {
+		if value == srcValue {
+			result = true
+			break
+		}
+	}
+	return result
+}
+
+func (this *analysisTool) OutputToFile(logfile string) {
 
 	uml := this.UML()
 	ioutil.WriteFile(logfile, []byte(uml), 0666)
 	log.Infof("Data has been saved to %s\n", logfile)
 
 }
-
