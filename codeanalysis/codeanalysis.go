@@ -1335,20 +1335,24 @@ func (this *analysisTool) OutputToFile(path string) error {
 		newContentWithUML = []byte("@startuml\n" + uml + "\n@enduml")
 	} else {
 		read, err := ioutil.ReadFile(path)
+
+		// Replace CR/LF (Windows) by LF (Unix) first
+		// Output will only contain LF - most client tools accept this even on windows
+		oldContent := regexp.MustCompile("\\r\\n").ReplaceAll(read, []byte("\n"))
 		if err != nil {
-			log.Warnf("unable to read file although outputtag was specified  %s - ignoring and writing new file")
+			log.Warnf("unable to oldContent file although outputtag was specified  %s - ignoring and writing new file")
 		}
 		r := regexp.MustCompile(fmt.Sprintf("%s(\\n|.)*?%s", startTag, endTag))
 
 		newContent := startTag + uml + endTag
 
-		if r.Match(read) {
-			newContentWithUML = r.ReplaceAll(read, []byte(newContent))
+		if r.Match(oldContent) {
+			newContentWithUML = r.ReplaceAll(oldContent, []byte(newContent))
 		} else {
-			if len(read) > 0 {
+			if len(oldContent) > 0 {
 				log.Warnf("tags not found in file %s - ignoring and appending uml with start and end tags to file: %s,%s",
 					path, startTag, endTag)
-				newContentWithUML = []byte(string(read) + "\n\n@startuml\n" + newContent + "\n@enduml")
+				newContentWithUML = []byte(string(oldContent) + "\n\n@startuml\n" + newContent + "\n@enduml")
 			} else {
 				newContentWithUML = []byte("@startuml\n" + newContent + "\n@enduml")
 			}
