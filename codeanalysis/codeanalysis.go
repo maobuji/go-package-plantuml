@@ -1338,7 +1338,7 @@ func (this *analysisTool) OutputToFile(path string) error {
 		if err != nil {
 			log.Warnf("unable to read file although outputtag was specified  %s - ignoring and writing new file")
 		}
-		r := regexp.MustCompile(fmt.Sprintf("%s(\\n|.)*%s", startTag, endTag))
+		r := regexp.MustCompile(fmt.Sprintf("%s(\\n|.)*?%s", startTag, endTag))
 
 		newContent := startTag + uml + endTag
 
