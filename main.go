@@ -35,9 +35,9 @@ func main() {
 			"--gopath /appdev/gopath -f myFile1 -f myFile2 -r classDiagramContainingOnlyClassesFromFile1And2 --outputfile result.md")
 
 		fmt.Println()
-		fmt.Println(`If --replacetag/-r is specified the UML will be framed by comments containing this tag.\n
-Subsequent calls of the analysis will replace just this section if present instead of overwriting the file.\n
-This can be used for automatically generating UML snippets during CI/CD Pipelines for a project and\n
+		fmt.Println(`If --replacetag/-r is specified the UML will be framed by comments containing this tag.
+Subsequent calls of the analysis will replace just this section if present instead of overwriting the file.
+This can be used for automatically generating UML snippets during CI/CD Pipelines for a project and
 embedding them into markdown containing other contents e.g. readme.md.`)
 		os.Exit(1)
 	}
