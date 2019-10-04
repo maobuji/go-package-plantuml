@@ -32,8 +32,9 @@ func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("Use examples\n" +
 			os.Args[0] + " --codedir /appdev/gopath/src/github.com/contiv/netplugin --type Contract --type Subscription" +
-			"--gopath /appdev/gopath -f myFile1 -f myFile2 -t classDiagramContainingOnlyClassesFromFile1And2 --outputfile result.md")
+			"--gopath /appdev/gopath -f myFile1 -f myFile2 -r classDiagramContainingOnlyClassesFromFile1And2 --outputfile result.md")
 
+		fmt.Println()
 		fmt.Println(`If --replacetag/-r is specified the UML will be framed by comments containing this tag.\n
 Subsequent calls of the analysis will replace just this section if present instead of overwriting the file.\n
 This can be used for automatically generating UML snippets during CI/CD Pipelines for a project and\n
