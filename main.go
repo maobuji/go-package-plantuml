@@ -19,6 +19,7 @@ func main() {
 		CodeDir          string   `short:"c" long:"codedir" description:"Code directory to scan" required:"true"`
 		GopathDir        string   `short:"g" long:"gopath" description:"GOPATH directory"`
 		OutputFile       string   `short:"o" long:"outputfile" description:"The result of the analysis is saved in this file"`
+		OutputReplaceTag string   `short:"r" long:"replacetag" description:"Tags for marking section containing the analysis output"`
 		IgnoreDirs       []string `short:"i" long:"ignoredir" description:"Need to be excluded, no need to scan and parse"`
 		IgnoreImplements []string `long:"ii" description:"Implementation that needs to be excluded"`
 		IgnoreTypeAlias  []string `long:"it" description:"Type to be excluded, will be scanned and parsed but not put into UML"`
@@ -31,7 +32,12 @@ func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("Use examples\n" +
 			os.Args[0] + " --codedir /appdev/gopath/src/github.com/contiv/netplugin --type Contract --type Subscription" +
-			"--gopath /appdev/gopath --outputfile  result.md")
+			"--gopath /appdev/gopath -f myFile1 -f myFile2 -t classDiagramContainingOnlyClassesFromFile1And2 --outputfile result.md")
+
+		fmt.Println(`If --replacetag/-r is specified the UML will be framed by comments containing this tag.\n
+Subsequent calls of the analysis will replace just this section if present instead of overwriting the file.\n
+This can be used for automatically generating UML snippets during CI/CD Pipelines for a project and\n
+embedding them into markdown containing other contents e.g. readme.md.`)
 		os.Exit(1)
 	}
 
@@ -43,10 +49,11 @@ func main() {
 	}
 
 	curPath, _ := filepath.Abs(filepath.Dir("."))
-	curPath = strings.Replace(curPath, "\\", "/", -1)
+
+	opts.CodeDir = filepath.FromSlash(opts.CodeDir)
+	opts.GopathDir = filepath.FromSlash(opts.GopathDir)
 
 	GOPATH := os.Getenv("GOPATH")
-	GOPATH = strings.Replace(GOPATH, "\\", "/", -1)
 
 	if opts.CodeDir == "" {
 		opts.CodeDir = curPath
@@ -84,6 +91,7 @@ func main() {
 	}
 
 	for i, dir := range opts.IgnoreDirs {
+		dir = filepath.FromSlash(dir)
 		if !filepath.IsAbs(dir) {
 			dir = filepath.Join(opts.CodeDir, dir)
 			opts.IgnoreDirs[i] = dir
@@ -104,6 +112,7 @@ func main() {
 		IncludeTypeAlias: opts.IncludeTypeAlias,
 		IgnoreFilenames:  opts.IgnoreFilenames,
 		IncludeFilenames: opts.IncludeFilenames,
+		OutputReplaceTag: opts.OutputReplaceTag,
 	}
 
 	result := codeanalysis.AnalysisCode(config)

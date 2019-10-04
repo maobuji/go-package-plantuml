@@ -53,8 +53,14 @@ Parameter Description<br>
 --gopath GOPATH Environment variable directory<br>
 --outputfile Analysis results are saved to this file<br>
 --ignoredir No need for code analysis directory（Can not set）<br>
---ignorefile, -if No need for  code analysis file
+--ignorefile, -if No need for  code analysis <br>
 --file, -f Include file - all other will be ignored
+--replacetag, -r Mark and (if file exists replace) UML section with comment containing this tag
+
+if --replacetag or -r is specified the UML will be framed by comments containing this tag.<
+Subsequent calls of the analysis will replace just this section if present instead of overwriting the file.
+This can be used for automatically generating UML snippets during CI/CD Pipelines for a project and
+embedding them into markdown containing other contents e.g. readme.md
 
 The output text of the previous step, convert to svg file
 ````
