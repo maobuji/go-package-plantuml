@@ -1,28 +1,27 @@
 package codeanalysis
 
 import (
-	"testing"
-	"github.com/stvp/assert"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
+	"github.com/stvp/assert"
 	"os"
+	"testing"
 )
 
-
 var gopathDir = os.Getenv("GOPATH")
-var testdataPath = gopathDir + "/src/github.com/maobuji/go-package-plantuml/testdata"
+var testdataPath = gopathDir + "/src/github.com/ahilbig/go-package-plantuml/testdata"
 
 func Test_findGoPackageNameInDirPath(t *testing.T) {
-	assert.Equal(t, "b", findGoPackageNameInDirPath(testdataPath + "/b"))
-	assert.Equal(t, "sub2", findGoPackageNameInDirPath(testdataPath + "/b/sub"))
+	assert.Equal(t, "b", findGoPackageNameInDirPath(testdataPath+"/b"))
+	assert.Equal(t, "sub2", findGoPackageNameInDirPath(testdataPath+"/b/sub"))
 }
 
 func Test_InterfacesSign(t *testing.T) {
 
 	config := Config{
-		CodeDir: testdataPath + "/a",
-		GopathDir :gopathDir,
-		IgnoreDirs:[]string{},
+		CodeDir:    testdataPath + "/a",
+		GopathDir:  gopathDir,
+		IgnoreDirs: []string{},
 	}
 
 	result := AnalysisCode(config)
@@ -33,8 +32,8 @@ func Test_InterfacesSign(t *testing.T) {
 
 	interfaceMeta := analysisTool1.interfaceMetas[0]
 	assert.Equal(t, "IA", interfaceMeta.Name)
-	assert.Equal(t, testdataPath + "/a/a.go", interfaceMeta.FilePath)
-	assert.Equal(t, "github.com/maobuji/go-package-plantuml/testdata/a", interfaceMeta.PackagePath, "error in interfaceMeta")
+	assert.Equal(t, testdataPath+"/a/a.go", interfaceMeta.FilePath)
+	assert.Equal(t, "github.com/ahilbig/go-package-plantuml/testdata/a", interfaceMeta.PackagePath, "error in interfaceMeta")
 
 	fmt.Println(interfaceMeta.MethodSigns)
 	assert.Equal(t, 4, len(interfaceMeta.MethodSigns))
@@ -47,8 +46,8 @@ func Test_InterfacesSign(t *testing.T) {
 
 	structmeta := analysisTool1.structMetas[0]
 	assert.Equal(t, "SA", structmeta.Name)
-	assert.Equal(t, testdataPath + "/a/a.go", structmeta.FilePath)
-	assert.Equal(t, "github.com/maobuji/go-package-plantuml/testdata/a", structmeta.PackagePath, "error in structmeta")
+	assert.Equal(t, testdataPath+"/a/a.go", structmeta.FilePath)
+	assert.Equal(t, "github.com/ahilbig/go-package-plantuml/testdata/a", structmeta.PackagePath, "error in structmeta")
 
 	fmt.Println(structmeta.MethodSigns)
 	assert.Equal(t, 4, len(structmeta.MethodSigns))
@@ -73,9 +72,9 @@ func Test_complex(t *testing.T) {
 	log.SetLevel(log.WarnLevel)
 
 	config := Config{
-		CodeDir: testdataPath + "/b",
-		GopathDir :gopathDir,
-		IgnoreDirs:[]string{},
+		CodeDir:    testdataPath + "/b",
+		GopathDir:  gopathDir,
+		IgnoreDirs: []string{},
 	}
 
 	result := AnalysisCode(config)
@@ -85,7 +84,7 @@ func Test_complex(t *testing.T) {
 	assert.Equal(t, 1, len(analysisTool1.interfaceMetas))
 	interfaceMeta := analysisTool1.interfaceMetas[0]
 	assert.Equal(t, "IA", interfaceMeta.Name)
-	assert.Equal(t, "Add(github.com/maobuji/go-package-plantuml/testdata/b/sub.SubSA,sync.Locker,github.com/maobuji/go-package-plantuml/testdata/b.B,github.com/maobuji/go-package-plantuml/testdata/b/suba.SubSa1)", interfaceMeta.MethodSigns[0])
+	assert.Equal(t, "Add(github.com/ahilbig/go-package-plantuml/testdata/b/sub.SubSA,sync.Locker,github.com/ahilbig/go-package-plantuml/testdata/b.B,github.com/ahilbig/go-package-plantuml/testdata/b/suba.SubSa1)", interfaceMeta.MethodSigns[0])
 
 	assert.Equal(t, 4, len(analysisTool1.structMetas))
 	structMetas := analysisTool1.findInterfaceImpls(interfaceMeta)
@@ -94,13 +93,12 @@ func Test_complex(t *testing.T) {
 
 }
 
-
 func Test_uml(t *testing.T) {
 
 	config := Config{
-		CodeDir: testdataPath + "/uml",
-		GopathDir :gopathDir,
-		IgnoreDirs:[]string{},
+		CodeDir:    testdataPath + "/uml",
+		GopathDir:  gopathDir,
+		IgnoreDirs: []string{},
 	}
 
 	result := AnalysisCode(config)

@@ -14,7 +14,7 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 
 	//config := codeanalysis.Config{
-	//	CodeDir: "/appdev/go-demo/src/github.com/ahilbig/go-package-plantuml/testdata/a",
+	//	CodeDir: "/appdev/go-demo/src/github.com/wwwido/go-package-plantuml/testdata/a",
 	//	GopathDir : "/appdev/go-demo",
 	//}
 	//
@@ -27,7 +27,7 @@ func main() {
 	basePath, _ := filepath.Abs(filepath.Dir(file))
 	basePath = strings.Replace(basePath, "\\", "/", -1)
 	config := codeanalysis.Config{
-		CodeDir:   basePath + "/testdata/uml",
+		CodeDir:   GOPATH + "/src/github.com/davyxu/cellnet",
 		GopathDir: GOPATH,
 	}
 

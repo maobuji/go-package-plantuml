@@ -1,38 +1,44 @@
 package codeanalysis
 
 import (
-	"go/parser"
-	"path/filepath"
-	"os"
-	"strings"
-	"go/token"
-	"reflect"
-	"go/ast"
-	log "github.com/Sirupsen/logrus"
-	"io/ioutil"
-	"fmt"
-	"path"
 	"encoding/json"
+	"fmt"
+	log "github.com/sirupsen/logrus"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
+	"strings"
 )
 
 type Config struct {
-	CodeDir    string
-	GopathDir  string
-	VendorDir  string
-	IgnoreDirs []string
+	CodeDir          string
+	GopathDir        string
+	VendorDir        string
+	IgnoreDirs       []string
+	IgnoreFilenames  []string
+	IncludeFilenames []string
+	IgnoreImplements []string
+	IncludeTypeAlias []string
+	IgnoreTypeAlias  []string
+	OutputReplaceTag string
 }
 
 type AnalysisResult interface {
-	OutputToFile(logfile string)
+	OutputToFile(logfile string) error
 }
 
 func AnalysisCode(config Config) AnalysisResult {
 	tool := &analysisTool{
-		interfaceMetas : []*interfaceMeta{},
-		structMetas : []*structMeta{},
-		typeAliasMetas : []*typeAliasMeta{},
-		packagePathPackageNameCache : map[string]string{},
-		dependencyRelations : []*DependencyRelation{},
+		interfaceMetas:              []*interfaceMeta{},
+		structMetas:                 []*structMeta{},
+		typeAliasMetas:              []*typeAliasMeta{},
+		packagePathPackageNameCache: map[string]string{},
+		dependencyRelations:         []*DependencyRelation{},
 	}
 	tool.analysis(config)
 	return tool
@@ -41,7 +47,7 @@ func AnalysisCode(config Config) AnalysisResult {
 func HasPrefixInSomeElement(value string, src []string) bool {
 	result := false
 	for _, srcValue := range src {
-		if (strings.HasPrefix(value, srcValue)) {
+		if strings.HasPrefix(value, srcValue) {
 			result = true
 			break
 		}
@@ -49,10 +55,22 @@ func HasPrefixInSomeElement(value string, src []string) bool {
 	return result
 }
 
+func HasSuffixInSomeElement(value, extraSuffix string, src []string) bool {
+	result := false
+	for _, srcValue := range src {
+		if strings.HasSuffix(value, srcValue+extraSuffix) || strings.HasSuffix(value, srcValue) {
+			result = true
+			break
+		}
+	}
+
+	return result
+}
+
 func sliceContains(src []string, value string) bool {
 	isContain := false
 	for _, srcValue := range src {
-		if (srcValue == value) {
+		if srcValue == value {
 			isContain = true
 			break
 		}
@@ -62,7 +80,7 @@ func sliceContains(src []string, value string) bool {
 
 func sliceContainsSlice(s []string, s2 []string) bool {
 	for _, str := range s2 {
-		if ! sliceContains(s, str) {
+		if !sliceContains(s, str) {
 			return false
 		}
 	}
@@ -81,13 +99,13 @@ func findGoPackageNameInDirPath(dirpath string) string {
 	dir_list, e := ioutil.ReadDir(dirpath)
 
 	if e != nil {
-		fmt.Errorf("读取目录%s文件列表失败,%s", dirpath, e)
+		fmt.Errorf("read directory %s, list files failed, %s", dirpath, e)
 		return ""
 	}
 
 	for _, fileInfo := range dir_list {
-		if ! fileInfo.IsDir() && strings.HasSuffix(fileInfo.Name(), ".go") {
-			packageName := ParsePackageNameFromGoFile(path.Join(dirpath, fileInfo.Name()))
+		if !fileInfo.IsDir() && strings.HasSuffix(fileInfo.Name(), ".go") {
+			packageName := ParsePackageNameFromGoFile(filepath.Join(dirpath, fileInfo.Name()))
 			if packageName != "" {
 				return packageName
 			}
@@ -103,7 +121,7 @@ func ParsePackageNameFromGoFile(filepath string) string {
 	file, err := parser.ParseFile(fset, filepath, nil, parser.ParseComments)
 
 	if err != nil {
-		log.Errorf("解析文件%s失败, %s", filepath, err)
+		log.Errorf("analyse file %s failure, %s", filepath, err)
 		return ""
 	}
 
@@ -111,7 +129,7 @@ func ParsePackageNameFromGoFile(filepath string) string {
 
 }
 
-func PathExists(path string) (bool) {
+func PathExists(path string) bool {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true
@@ -122,26 +140,30 @@ func PathExists(path string) (bool) {
 	return false
 }
 
-func packagePathToUML(packagePath string) (string) {
+func packagePathToUML(packagePath string) string {
+	// If using linux paths:
 	packagePath = strings.Replace(packagePath, "/", "\\\\", -1)
+	// If using windows paths:
+	packagePath = strings.Replace(packagePath, "\\", "\\\\", -1)
 	packagePath = strings.Replace(packagePath, "-", "_", -1)
-	return packagePath
+	// Cut preceding and trailing namespace separators
+	return strings.Trim(packagePath, "\\")
 }
 
 type baseInfo struct {
-	// go文件路径
-	FilePath    string
-	// 包路径, 例如 github.com/maobuji/list-interface
+	// go file path
+	FilePath string
+	// Package path, for example github.com/maobuji/list-interface
 	PackagePath string
 }
 
 type interfaceMeta struct {
 	baseInfo
-	Name        string
-	// interface的方法签名列表,
+	Name string
+	// interface method signature list,
 	MethodSigns []string
-	// UML图节点
-	UML         string
+	// UML gigure node
+	UML string
 }
 
 func (this *interfaceMeta) UniqueNameUML() string {
@@ -150,11 +172,18 @@ func (this *interfaceMeta) UniqueNameUML() string {
 
 type structMeta struct {
 	baseInfo
-	Name        string
-	// struct的方法签名列表
+	Name string
+	// struct method signature list
 	MethodSigns []string
+	// UML figure node
+	UML string
+}
+
+type funcMeta struct {
+	baseInfo
+	Name string
 	// UML图节点
-	UML         string
+	UML string
 }
 
 type typeAliasMeta struct {
@@ -168,14 +197,14 @@ func (this *structMeta) UniqueNameUML() string {
 }
 
 func (this *structMeta) implInterfaceUML(interfaceMeta1 *interfaceMeta) string {
-	return fmt.Sprintf("%s <|- %s\n", interfaceMeta1.UniqueNameUML(), this.UniqueNameUML())
+	return fmt.Sprintf("%s <|------ %s\n", interfaceMeta1.UniqueNameUML(), this.UniqueNameUML())
 }
 
 type importMeta struct {
-	// 例如 main
+	// for example main
 	Alias string
-	// 例如 github.com/maobuji/list-interface
-	Path  string
+	// for example github.com/maobuji/list-interface
+	Path string
 }
 
 type DependencyRelation struct {
@@ -185,52 +214,53 @@ type DependencyRelation struct {
 }
 
 type analysisTool struct {
-	config                      Config
+	config Config
 
-	// 当前解析的go文件, 例如/appdev/go-demo/src/github.com/maobuji/list-interface/a.go
-	currentFile                 string
-	// 当前解析的go文件,所在包路径, 例如github.com/maobuji/list-interface
-	currentPackagePath          string
-	// 当前解析的go文件,引入的其他包
-	currentFileImports          []*importMeta
+	// Currently parsed go file, for example /appdev/go-demo/src/github.com/maobuji/list-interface/a.go
+	currentFile string
+	// Currently parsed go file, where the package path, for example github.com/maobuji/list-interface
+	currentPackagePath string
+	// Currently parsed go file, other packages introduced
+	currentFileImports []*importMeta
 
-	// 所有的interface
-	interfaceMetas              []*interfaceMeta
-	// 所有的struct
-	structMetas                 []*structMeta
-	// 所有的别名定义
-	typeAliasMetas              []*typeAliasMeta
-	// package path与package name的映射关系,例如github.com/maobuji/list-interface 对应的pakcage name为 main
+	// all interfaces
+	interfaceMetas []*interfaceMeta
+	// all structs
+	structMetas []*structMeta
+	funcMetas   []*funcMeta
+	// all alias definitions
+	typeAliasMetas []*typeAliasMeta
+	// package path and package name mapping relationship, for example github.com/maobuji/list-interface corresponding package name for main
 	packagePathPackageNameCache map[string]string
-	// struct之间的依赖关系
-	dependencyRelations         []*DependencyRelation
+	// dependency between structs
+	dependencyRelations []*DependencyRelation
 }
 
-func (this *analysisTool)analysis(config Config) {
+func (this *analysisTool) analysis(config Config) {
 
 	this.config = config
 
-	if this.config.CodeDir == "" || ! PathExists(this.config.CodeDir) {
-		log.Errorf("找不到代码目录%s\n", this.config.CodeDir)
+	if this.config.CodeDir == "" || !PathExists(this.config.CodeDir) {
+		log.Errorf("Can't find code directory %s\n", this.config.CodeDir)
 		return
 	}
 
-	if this.config.GopathDir == "" || ! PathExists(this.config.GopathDir) {
-		log.Errorf("找不到GOPATH目录%s\n", this.config.GopathDir)
+	if this.config.GopathDir == "" || !PathExists(this.config.GopathDir) {
+		log.Errorf("cannot find GOPATH directory %s\n", this.config.GopathDir)
 		return
 	}
 
 	for _, lib := range stdlibs {
-		this.mapPackagePath_PackageName(lib, path.Base(lib))
+		this.mapPackagePath_PackageName(lib, filepath.Base(lib))
 	}
 
 	dir_walk_once := func(path string, info os.FileInfo, err error) error {
-		// 过滤掉测试代码
-		if strings.HasSuffix(path, ".go") && ! strings.HasSuffix(path, "test.go") {
-			if config.IgnoreDirs != nil && HasPrefixInSomeElement(path, config.IgnoreDirs) {
+		// Filter out test code
+		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "test.go") {
+			if this.ignorePath(path) {
 				// ignore
 			} else {
-				log.Info("解析 " + path)
+				log.Info("analyze " + path)
 				this.visitTypeInFile(path)
 			}
 		}
@@ -241,12 +271,12 @@ func (this *analysisTool)analysis(config Config) {
 	filepath.Walk(config.CodeDir, dir_walk_once)
 
 	dir_walk_twice := func(path string, info os.FileInfo, err error) error {
-		// 过滤掉测试代码
-		if strings.HasSuffix(path, ".go") && ! strings.HasSuffix(path, "test.go") {
-			if config.IgnoreDirs != nil && HasPrefixInSomeElement(path, config.IgnoreDirs) {
+		// Filter out test code
+		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "test.go") {
+			if this.ignorePath(path) {
 				// ignore
 			} else {
-				log.Info("解析 " + path)
+				log.Info("resolve " + path)
 				this.visitFuncInFile(path)
 			}
 		}
@@ -258,6 +288,13 @@ func (this *analysisTool)analysis(config Config) {
 
 }
 
+func (this *analysisTool) ignorePath(path string) bool {
+	c := this.config
+	return c.IgnoreDirs != nil && HasPrefixInSomeElement(path, c.IgnoreDirs) ||
+		c.IgnoreFilenames != nil && HasSuffixInSomeElement(path, ".go", c.IgnoreFilenames) ||
+		c.IncludeFilenames != nil && !HasSuffixInSomeElement(path, ".go", c.IncludeFilenames)
+}
+
 func (this *analysisTool) initFile(path string) {
 	log.Debug("path=", path)
 
@@ -265,7 +302,7 @@ func (this *analysisTool) initFile(path string) {
 	this.currentPackagePath = this.filepathToPackagePath(path)
 
 	if this.currentPackagePath == "" {
-		log.Errorf("packagePath为空,currentFile=%s\n", this.currentFile)
+		log.Errorf("packagePath is empty, currentFile=%s\n", this.currentFile)
 	}
 
 }
@@ -333,40 +370,40 @@ func (this *analysisTool) visitTypeSpec(typeSpec *ast.TypeSpec) {
 		return
 	}
 
-	// 其他类型别名
+	// Other types of alias
 	this.typeAliasMetas = append(this.typeAliasMetas, &typeAliasMeta{
-		baseInfo : baseInfo{
-			FilePath : this.currentFile,
-			PackagePath : this.currentPackagePath,
+		baseInfo: baseInfo{
+			FilePath:    this.currentFile,
+			PackagePath: this.currentPackagePath,
 		},
-		Name : typeSpec.Name.Name,
-		targetTypeName: "",
+		Name:           typeSpec.Name.Name,
+		targetTypeName: this.typeToString(typeSpec.Type, false),
 	})
 
 }
 
-func (this*analysisTool) filepathToPackagePath(filepath string) string {
+func (this *analysisTool) filepathToPackagePath(path string) string {
 
-	filepath = path.Dir(filepath)
+	path = filepath.Dir(path)
 
 	if this.config.VendorDir != "" {
-		if (strings.HasPrefix(filepath, this.config.VendorDir)) {
-			packagePath := strings.TrimPrefix(filepath, this.config.VendorDir)
+		if strings.HasPrefix(path, this.config.VendorDir) {
+			packagePath := strings.TrimPrefix(path, this.config.VendorDir)
 			packagePath = strings.TrimPrefix(packagePath, "/")
 			return packagePath
 		}
 	}
 
 	if this.config.GopathDir != "" {
-		srcdir := path.Join(this.config.GopathDir, "src")
-		if strings.HasPrefix(filepath, srcdir) {
-			packagePath := strings.TrimPrefix(filepath, srcdir)
+		srcdir := filepath.Join(this.config.GopathDir, "src")
+		if strings.HasPrefix(path, srcdir) {
+			packagePath := strings.TrimPrefix(path, srcdir)
 			packagePath = strings.TrimPrefix(packagePath, "/")
 			return packagePath
 		}
 	}
 
-	log.Errorf("无法确认包路径名, filepath=%s\n", filepath)
+	log.Errorf("unable to confirm package path name, filepath=%s\n", path)
 
 	return ""
 
@@ -407,8 +444,8 @@ func (this *analysisTool) visitFuncInFile(path string) {
 			log.Debugf("current_file=%s packagePath=%s, alias=%s\n", this.currentFile, packagePath, alias)
 
 			this.currentFileImports = append(this.currentFileImports, &importMeta{
-				Alias : alias,
-				Path:packagePath,
+				Alias: alias,
+				Path:  packagePath,
 			})
 		}
 	}
@@ -454,12 +491,12 @@ func (this *analysisTool) visitFuncInFile(path string) {
 func (this *analysisTool) visitStructType(name string, structType *ast.StructType) {
 
 	strutMeta1 := &structMeta{
-		baseInfo : baseInfo{
-			FilePath:this.currentFile,
-			PackagePath:this.currentPackagePath,
+		baseInfo: baseInfo{
+			FilePath:    this.currentFile,
+			PackagePath: this.currentPackagePath,
 		},
-		Name : name,
-		MethodSigns:[]string{},
+		Name:        name,
+		MethodSigns: []string{},
 	}
 
 	this.structMetas = append(this.structMetas, strutMeta1)
@@ -490,8 +527,8 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 
 			d := DependencyRelation{
 				source: sourceStruct1,
-				target:targetStruct1,
-				uml : sourceStruct1.UniqueNameUML() + " ..|> " + targetStruct1.UniqueNameUML(),
+				target: targetStruct1,
+				uml:    sourceStruct1.UniqueNameUML() + " ---|> " + targetStruct1.UniqueNameUML(),
 			}
 
 			this.dependencyRelations = append(this.dependencyRelations, &d)
@@ -502,8 +539,8 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 
 				d := DependencyRelation{
 					source: sourceStruct1,
-					target:targetStruct1,
-					uml : sourceStruct1.UniqueNameUML() + " ---> \"*\" " + targetStruct1.UniqueNameUML() + " : " + fieldNames,
+					target: targetStruct1,
+					uml:    sourceStruct1.UniqueNameUML() + " ---> \"*\" " + targetStruct1.UniqueNameUML() + " : " + fieldNames,
 				}
 
 				this.dependencyRelations = append(this.dependencyRelations, &d)
@@ -511,8 +548,8 @@ func (this *analysisTool) visitStructField(sourceStruct1 *structMeta, field *ast
 			} else {
 				d := DependencyRelation{
 					source: sourceStruct1,
-					target:targetStruct1,
-					uml : sourceStruct1.UniqueNameUML() + " ---> " + targetStruct1.UniqueNameUML() + " : " + fieldNames,
+					target: targetStruct1,
+					uml:    sourceStruct1.UniqueNameUML() + " ---> " + targetStruct1.UniqueNameUML() + " : " + fieldNames,
 				}
 
 				this.dependencyRelations = append(this.dependencyRelations, &d)
@@ -537,7 +574,7 @@ func (this *analysisTool) isGoBaseType(type1 string) bool {
 	return false
 }
 
-func (this *analysisTool) findStructByAliasAndStructName(alias string, structName string) (*structMeta) {
+func (this *analysisTool) findStructByAliasAndStructName(alias string, structName string) *structMeta {
 
 	if alias == "" && this.isGoBaseType(structName) {
 		return nil
@@ -614,6 +651,8 @@ func (this *analysisTool) structBodyToString(structType *ast.StructType) string 
 		result += "  " + this.fieldToString(field) + "\n"
 	}
 
+	result += "  \n%%method%%\n"
+
 	result += "}"
 
 	return result
@@ -623,11 +662,11 @@ func (this *analysisTool) structBodyToString(structType *ast.StructType) string 
 func (this *analysisTool) visitInterfaceType(name string, interfaceType *ast.InterfaceType) {
 
 	interfaceInfo1 := &interfaceMeta{
-		baseInfo : baseInfo{
-			FilePath : this.currentFile,
-			PackagePath : this.currentPackagePath,
+		baseInfo: baseInfo{
+			FilePath:    this.currentFile,
+			PackagePath: this.currentPackagePath,
 		},
-		Name:name,
+		Name: name,
 	}
 
 	this.interfaceMetas = append(this.interfaceMetas, interfaceInfo1)
@@ -678,7 +717,7 @@ func (this *analysisTool) funcParamsResultsToString(funcType *ast.FuncType) stri
 
 }
 
-func (this*analysisTool) findStruct(packagePath string, structName string) *structMeta {
+func (this *analysisTool) findStruct(packagePath string, structName string) *structMeta {
 
 	for _, structMeta1 := range this.structMetas {
 		if structMeta1.Name == structName && structMeta1.PackagePath == packagePath {
@@ -689,7 +728,7 @@ func (this*analysisTool) findStruct(packagePath string, structName string) *stru
 	return nil
 }
 
-func (this*analysisTool) findTypeAlias(packagePath string, structName string) *typeAliasMeta {
+func (this *analysisTool) findTypeAlias(packagePath string, structName string) *typeAliasMeta {
 
 	for _, typeAliasMeta1 := range this.typeAliasMetas {
 		if typeAliasMeta1.Name == structName && typeAliasMeta1.PackagePath == packagePath {
@@ -700,7 +739,7 @@ func (this*analysisTool) findTypeAlias(packagePath string, structName string) *t
 	return nil
 }
 
-func (this*analysisTool) findInterfaceMeta(packagePath string, interfaceName string) *interfaceMeta {
+func (this *analysisTool) findInterfaceMeta(packagePath string, interfaceName string) *interfaceMeta {
 
 	for _, interfaceMeta := range this.interfaceMetas {
 		if interfaceMeta.Name == interfaceName && interfaceMeta.PackagePath == packagePath {
@@ -729,6 +768,19 @@ func (this *analysisTool) visitFunc(funcDecl *ast.FuncDecl) {
 			methodSign := this.createMethodSign(funcDecl.Name.Name, funcDecl.Type)
 			structMeta.MethodSigns = append(structMeta.MethodSigns, methodSign)
 		}
+	} else {
+		// Other type aliases
+		classUML := "class " + funcDecl.Name.Name + " << (F,#FF7700) >> { \n  " + this.createMethodSign(funcDecl.Name.Name, funcDecl.Type) + "\n}"
+		strutMeta1 := &funcMeta{
+			baseInfo: baseInfo{
+				FilePath:    this.currentFile,
+				PackagePath: this.currentPackagePath,
+			},
+			Name: funcDecl.Name.Name,
+			UML:  fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML),
+		}
+
+		this.funcMetas = append(this.funcMetas, strutMeta1)
 	}
 
 }
@@ -818,7 +870,6 @@ func (this *analysisTool) IdentsToString(names []*ast.Ident) string {
 	return r
 }
 
-
 // 创建方法签名
 func (this *analysisTool) createMethodSign(methodName string, funcType *ast.FuncType) string {
 
@@ -896,11 +947,11 @@ func (this *analysisTool) fieldToString(f *ast.Field) string {
 
 	r += this.typeToString(f.Type, false)
 
-	return r;
+	return r
 
 }
 
-func (this *analysisTool) typeToString(t ast.Expr, convertTypeToUnqiueType bool) (string) {
+func (this *analysisTool) typeToString(t ast.Expr, convertTypeToUnqiueType bool) string {
 
 	ident, ok := t.(*ast.Ident)
 	if ok {
@@ -970,7 +1021,7 @@ func (this *analysisTool) typeToString(t ast.Expr, convertTypeToUnqiueType bool)
 	return ""
 }
 
-func (this *analysisTool) selectorExprToString(t ast.Expr) (string) {
+func (this *analysisTool) selectorExprToString(t ast.Expr) string {
 
 	ident, ok := t.(*ast.Ident)
 	if ok {
@@ -982,7 +1033,7 @@ func (this *analysisTool) selectorExprToString(t ast.Expr) (string) {
 	return ""
 }
 
-func (this *analysisTool)  addPackagePathWhenStruct(fieldType string) string {
+func (this *analysisTool) addPackagePathWhenStruct(fieldType string) string {
 
 	searchPackages := []string{this.currentPackagePath}
 
@@ -993,7 +1044,7 @@ func (this *analysisTool)  addPackagePathWhenStruct(fieldType string) string {
 	}
 
 	for _, meta := range this.structMetas {
-		if sliceContains(searchPackages, meta.PackagePath)  && meta.Name == fieldType {
+		if sliceContains(searchPackages, meta.PackagePath) && meta.Name == fieldType {
 			return meta.PackagePath + "." + fieldType
 		}
 	}
@@ -1011,14 +1062,14 @@ func (this *analysisTool) findAliasByPackagePath(packagePath string) string {
 	result := ""
 
 	if this.config.VendorDir != "" {
-		absPath := path.Join(this.config.VendorDir, packagePath)
+		absPath := filepath.Join(this.config.VendorDir, packagePath)
 		if PathExists(absPath) {
 			result = findGoPackageNameInDirPath(absPath)
 		}
 	}
 
 	if this.config.GopathDir != "" {
-		absPath := path.Join(this.config.GopathDir, "src", packagePath)
+		absPath := filepath.Join(this.config.GopathDir, "src", packagePath)
 		if PathExists(absPath) {
 			result = findGoPackageNameInDirPath(absPath)
 		}
@@ -1029,7 +1080,7 @@ func (this *analysisTool) findAliasByPackagePath(packagePath string) string {
 	return result
 }
 
-func (this*analysisTool) existStructOrInterfaceInPackage(typeName string, packageName string) bool {
+func (this *analysisTool) existStructOrInterfaceInPackage(typeName string, packageName string) bool {
 	structMeta1 := this.findStruct(this.currentPackagePath, typeName)
 	if structMeta1 != nil {
 		return true
@@ -1043,7 +1094,7 @@ func (this*analysisTool) existStructOrInterfaceInPackage(typeName string, packag
 	return false
 }
 
-func (this*analysisTool) existTypeAliasInPackage(typeName string, packageName string) bool {
+func (this *analysisTool) existTypeAliasInPackage(typeName string, packageName string) bool {
 	meta1 := this.findTypeAlias(this.currentPackagePath, typeName)
 	if meta1 != nil {
 		return true
@@ -1061,7 +1112,7 @@ func (this *analysisTool) findPackagePathByAlias(alias string, structName string
 		}
 
 		if this.existTypeAliasInPackage(structName, this.currentPackagePath) {
-			// 忽略别名类型
+			// Ignore alias type
 			return ""
 		}
 
@@ -1083,7 +1134,7 @@ func (this *analysisTool) findPackagePathByAlias(alias string, structName string
 				}
 
 				if this.existTypeAliasInPackage(structName, matchedImportMeta.Path) {
-					// 忽略别名类型
+					// Ignore alias type
 					return ""
 				}
 
@@ -1092,7 +1143,7 @@ func (this *analysisTool) findPackagePathByAlias(alias string, structName string
 		}
 
 		currentFileImportsjson, _ := json.Marshal(this.currentFileImports)
-		log.Warnf("找不到包的全路径，包名为%s，type name=%s, 在%s文件, matchedImportMetas=%d, currentFileImports=%s", alias, structName, this.currentFile, len(matchedImportMetas), currentFileImportsjson)
+		log.Warnf("Cannot find the full path to the package named %s, type name=%s in file %s, matchedImportMetas=%d, currentFileImports=%s", alias, structName, this.currentFile, len(matchedImportMetas), currentFileImportsjson)
 
 		return alias
 
@@ -1128,7 +1179,7 @@ func (this *analysisTool) findPackagePathByAlias(alias string, structName string
 				}
 
 				if this.existTypeAliasInPackage(structName, matchedImportMeta.Path) {
-					// 忽略别名类型
+					// Ignore alias type
 					return ""
 				}
 
@@ -1137,7 +1188,7 @@ func (this *analysisTool) findPackagePathByAlias(alias string, structName string
 		}
 
 		currentFileImportsjson, _ := json.Marshal(this.currentFileImports)
-		log.Warnf("找不到包的全路径，包名为%s，type name=%s, 在%s文件, matchedImportMetas=%d, currentFileImports=%s", alias, structName, this.currentFile, len(matchedImportMetas), currentFileImportsjson)
+		log.Warnf("Cannot find the full path to the package named %s, type name=%s in file %s , matchedImportMetas=%d, currentFileImports=%s", alias, structName, this.currentFile, len(matchedImportMetas), currentFileImportsjson)
 
 		return alias
 
@@ -1168,18 +1219,18 @@ func (this *analysisTool) interfaceBodyToString(interfaceType *ast.InterfaceType
 func (this *analysisTool) content(t ast.Expr) string {
 	bytes, err := ioutil.ReadFile(this.currentFile)
 	if err != nil {
-		log.Error("读取文件", this.currentFile, "失败", err)
+		log.Error("Read file", this.currentFile, "failure", err)
 		return ""
 	}
 
-	return string(bytes[t.Pos() - 1:t.End() - 1])
+	return string(bytes[t.Pos()-1 : t.End()-1])
 }
 
 /**
  * 查找interface有哪些实现的Struct
  */
 func (this *analysisTool) findInterfaceImpls(interfaceMeta1 *interfaceMeta) []*structMeta {
-	metas := [] *structMeta{}
+	metas := []*structMeta{}
 
 	for _, structMeta1 := range this.structMetas {
 		if sliceContainsSlice(structMeta1.MethodSigns, interfaceMeta1.MethodSigns) {
@@ -1195,35 +1246,123 @@ func (this *analysisTool) UML() string {
 	uml := ""
 
 	for _, structMeta1 := range this.structMetas {
-		uml += structMeta1.UML
+		if this.IsFileIgnored(structMeta1.Name) {
+			continue
+		}
+		method := "  " + strings.Join(structMeta1.MethodSigns, "\n  ")
+		uml += strings.Replace(structMeta1.UML, "%%method%%", method, 1)
 		uml += "\n"
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
+		if this.IsFileIgnored(interfaceMeta1.Name) {
+			continue
+		}
 		uml += interfaceMeta1.UML
 		uml += "\n"
 	}
 
+	for _, funcMeta1 := range this.funcMetas {
+		uml += funcMeta1.UML
+		uml += "\n"
+	}
+
+	for _, typeAliasMeta1 := range this.typeAliasMetas {
+		if this.IsFileIgnored(typeAliasMeta1.Name) {
+			continue
+		}
+		classUML := "class " + typeAliasMeta1.Name + " << (T,#FF7777) " + typeAliasMeta1.targetTypeName + " >>"
+
+		uml += fmt.Sprintf("namespace %s {\n %s \n}", this.packagePathToUML(this.currentPackagePath), classUML)
+		uml += "\n"
+	}
+
 	for _, d := range this.dependencyRelations {
+		if this.IsFileIgnored(d.source.Name) || this.IsFileIgnored(d.target.Name) {
+			continue
+		}
+
 		uml += d.uml
 		uml += "\n"
 	}
 
 	for _, interfaceMeta1 := range this.interfaceMetas {
+		if this.IsFileIgnored(interfaceMeta1.Name) || InSomeElement(interfaceMeta1.Name, this.config.IgnoreImplements) {
+			continue
+		}
+
 		structMetas := this.findInterfaceImpls(interfaceMeta1)
 		for _, structMeta := range structMetas {
 			uml += structMeta.implInterfaceUML(interfaceMeta1)
 		}
 	}
 
-	return "@startuml\n" + uml + "@enduml"
+	return uml
 }
 
-func (this*analysisTool) OutputToFile(logfile string) {
+func (this *analysisTool) IsFileIgnored(name string) bool {
+	return this.config.IncludeTypeAlias != nil && !InSomeElement(name, this.config.IncludeTypeAlias) ||
+		InSomeElement(name, this.config.IgnoreTypeAlias)
+}
 
+func InSomeElement(value string, src []string) bool {
+	result := false
+	for _, srcValue := range src {
+		if value == srcValue {
+			result = true
+			break
+		}
+	}
+	return result
+}
+
+func (this *analysisTool) GetStartEndTags() (string, string) {
+	outputFileTag := this.config.OutputReplaceTag
+	if outputFileTag == "" {
+		return "", ""
+	}
+	return fmt.Sprintf("' DIAGRAM %s AUTOGENERATED START TAG\n", outputFileTag),
+		fmt.Sprintf("' DIAGRAM %s AUTOGENERATED END TAG", outputFileTag)
+}
+
+func (this *analysisTool) OutputToFile(path string) error {
+	var err error
 	uml := this.UML()
-	ioutil.WriteFile(logfile, []byte(uml), 0666)
-	log.Infof("数据已保存到%s\n", logfile)
+	var newContentWithUML []byte
 
+	startTag, endTag := this.GetStartEndTags()
+	if startTag == "" {
+		newContentWithUML = []byte("@startuml\n" + uml + "\n@enduml")
+	} else {
+		read, err := ioutil.ReadFile(path)
+
+		// Replace CR/LF (Windows) by LF (Unix) first
+		// Output will only contain LF - most client tools accept this even on windows
+		oldContent := regexp.MustCompile("\\r\\n").ReplaceAll(read, []byte("\n"))
+		if err != nil {
+			log.Warnf("unable to oldContent file although outputtag was specified  %s - ignoring and writing new file")
+		}
+		r := regexp.MustCompile(fmt.Sprintf("%s(\\n|.)*?%s", startTag, endTag))
+
+		newContent := startTag + uml + endTag
+
+		if r.Match(oldContent) {
+			newContentWithUML = r.ReplaceAll(oldContent, []byte(newContent))
+		} else {
+			if len(oldContent) > 0 {
+				log.Warnf("tags not found in file %s - ignoring and appending uml with start and end tags to file: %s,%s",
+					path, startTag, endTag)
+				newContentWithUML = []byte(string(oldContent) + "\n\n@startuml\n" + newContent + "\n@enduml")
+			} else {
+				newContentWithUML = []byte("@startuml\n" + newContent + "\n@enduml")
+			}
+		}
+	}
+	err = ioutil.WriteFile(path, newContentWithUML, 0666)
+
+	if err != nil {
+		return err
+	}
+	log.Infof("data has been saved to %s\n", path)
+	return err
 }
-

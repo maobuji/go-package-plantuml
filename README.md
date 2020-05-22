@@ -1,36 +1,36 @@
 # go-package-plantuml
 
 
-### 环境配置
+### Environmental configuration
 
-1.安装go环境并配置环境变量
+1.Install go environment and configure environment variables
 ````ftl>
 export GOROOT=/opt/golang/go
 export PATH=$GOROOT/bin:$PATH
 export GOPATH=/opt/gopath
 ````
-2.安装JDK8以上并配置环境变量
+2.Install JDK8 and configure environment variables
 ````ftl>
 export JAVA_HOME=/opt/jdk/jdk1.8.0_161
 export PATH=$JAVA_HOME/bin:$PATH
 export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
 ````
-在/etc/profile文件中加入对应的环境变量，并刷新source /etc/profile
+in /etc/profile --> Add the corresponding environment variable to the file and refresh with source /etc/profile
 
-### 安装所需软件 
+### Install required software 
 ````ftl>
 yum install graphviz
 yum install git
 yum install wget
 ````
 
-### 下载和编译项目
+### Download and compile the project
 ````
-go get github.com/maobuji/go-package-plantuml
+go get github.com/ahilbig/go-package-plantuml
 ````
 
-### 编译和下载依赖包
-首次运行会自动下载依赖包，请耐心等待。
+### Compiling and downloading dependencies
+First run automatically downloads dependencies, please wait patiently
 ````
 cd /opt
 cp $GOPATH/src/github.com/maobuji/go-package-plantuml/goplantuml . -rf
@@ -40,24 +40,31 @@ sh install.sh
 ````
 
 
-# 使用命令直接运行
-直接运行，可以设置更多参数。--codedir为必须输入，其它参数可选
+# Run directly using commands
+Direct operation can set more parameters, --codedir must be entered, other parameters are optional
 ````
 ./go-package-plantuml --codedir /appdev/gopath/src/github.com/contiv/netplugin \
 --gopath /appdev/gopath \
 --outputfile  /tmp/result.txt
 --ignoredir /appdev/gopath/src/github.com/contiv/netplugin/vendor
 ````
-参数说明<br>
---codedir 要分析的代码目录<br>
---gopath GOPATH环境变量目录<br>
---outputfile 分析结果保存到该文件<br>
---ignoredir 不需要进行代码分析的目录（可以不用设置）<br>
+Parameter Description<br>
+--codedir The code directory to analyze<br>
+--gopath GOPATH Environment variable directory<br>
+--outputfile Analysis results are saved to this file<br>
+--ignoredir No need for code analysis directory（Can not set）<br>
+--ignorefile, -if No need for  code analysis <br>
+--file, -f Include file - all other will be ignored
+--replacetag, -r Mark and (if file exists replace) UML section with comment containing this tag
 
+if --replacetag or -r is specified the UML will be framed by comments containing this tag.<
+Subsequent calls of the analysis will replace just this section if present instead of overwriting the file.
+This can be used for automatically generating UML snippets during CI/CD Pipelines for a project and
+embedding them into markdown containing other contents e.g. readme.md
 
-将上一步的输出文本，转换为svg文件
+The output text of the previous step, convert to svg file
 ````
 java -jar plantuml.jar /tmp/result.txt -tsvg
 ````
 
-gouml脚本中有样例，可以直接sh gouml.sh运行
+gouml Samples in the script, can be directly run by sh gouml.sh 
